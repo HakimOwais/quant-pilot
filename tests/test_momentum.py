@@ -16,7 +16,7 @@ def _trending_prices(n: int = 300):
     t = np.arange(n)
     return pd.DataFrame(
         {
-            "WIN": 100 * 1.0015**t,   # strong uptrend
+            "WIN": 100 * 1.0015**t,  # strong uptrend
             "FLAT": np.full(n, 100.0),
             "LOSE": 100 * 0.9985**t,  # downtrend
         },
@@ -29,7 +29,7 @@ def test_selects_the_winner():
     weights = MomentumStrategy().generate_weights(close)
     last = weights.iloc[-1]
     assert last["WIN"] == max(last)
-    assert last["WIN"] > 0.9          # ~full weight (single name, scale 1.0)
+    assert last["WIN"] > 0.9  # ~full weight (single name, scale 1.0)
     assert last["LOSE"] == 0.0
     assert last["FLAT"] == 0.0
 
@@ -45,8 +45,8 @@ def test_membership_excludes_ineligible_winner():
     mask = membership_matrix(intervals, dates, list(close.columns))
     weights = MomentumStrategy().generate_weights(close, membership=mask)
     last = weights.iloc[-1]
-    assert last["WIN"] == 0.0          # excluded despite best momentum
-    assert last["FLAT"] > 0.0          # next eligible name chosen
+    assert last["WIN"] == 0.0  # excluded despite best momentum
+    assert last["FLAT"] > 0.0  # next eligible name chosen
 
 
 def test_inverse_vol_sizing_favours_lower_vol():
@@ -79,6 +79,6 @@ def test_momentum_through_engine_is_profitable_net_of_costs():
     weights = MomentumStrategy().generate_weights(close)
     prices = PriceData(open=close, close=close)  # fill at open == close for simplicity
     result = BacktestEngine().run(prices, weights)
-    assert result.summary["total_return"] > 0.0   # WIN trend dominates costs
+    assert result.summary["total_return"] > 0.0  # WIN trend dominates costs
     assert result.summary["total_costs"] > 0.0
     assert result.summary["n_rebalances"] >= 1.0

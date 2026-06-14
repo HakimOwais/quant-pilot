@@ -22,10 +22,11 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 5 | Math models (OU, Black-Scholes, Monte Carlo) | 4–6 | ✅ done | [04-math-models.md](04-math-models.md) |
 | 7 | Backtest engine + cost/impact model | 7–8 | ✅ done | [05-backtest-engine.md](05-backtest-engine.md) |
 | 9 | Momentum strategy (long-only factor tilt) | 9 | ✅ done | [06-momentum-strategy.md](06-momentum-strategy.md) |
-| 10 | Attribution + validation (alpha vs beta) | 10 | ⏳ next | — |
+| 10 | Attribution + validation (alpha vs beta) | 10 | ✅ done | [07-attribution-validation.md](07-attribution-validation.md) |
+| — | Pairs trading (cointegration → OU → SSF) | 11–12 | ⏳ next | — |
 | — | API read endpoints + job submission + SSE | 8 | ⬜ planned | — |
 | — | Dashboard (read-only) | 9 | ⬜ planned | — |
-| — | PaperBroker + pairs + risk + live readiness | 10–12 | ⬜ planned | — |
+| — | Risk layer + PaperBroker + live readiness | 13+ | ⬜ planned | — |
 
 ## Current capability snapshot
 
@@ -40,8 +41,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   with ADV participation cap and circuit guards.
 - Momentum strategy: PIT-eligible cross-sectional selection, inverse-vol sizing, adaptive VRP
   regime scaling — producing engine-ready target weights.
+- Analysis: performance stats, factor attribution (HAC alpha t-stat), and Sharpe validation
+  (PSR, Deflated Sharpe, block-bootstrap CI) — the alpha-vs-beta gate.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (69 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (78 tests).
 
 ## Conventions
 
