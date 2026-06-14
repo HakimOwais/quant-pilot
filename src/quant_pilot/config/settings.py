@@ -7,10 +7,10 @@ this module only covers platform/infra/security config sourced from the environm
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _INSECURE_SECRET = "dev-insecure-change-me"  # noqa: S105 (sentinel, not a real secret)
 
@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     # --- api ---  (localhost-bind by default; SYSTEM_DESIGN §8.1)
     api_host: str = "127.0.0.1"
     api_port: int = 8000
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # NoDecode: keep pydantic-settings from JSON-decoding the env value so the CSV validator runs.
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     session_secret: str = Field(default=_INSECURE_SECRET, min_length=8)
 
     # --- infra ---

@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # psycopg[binary] ships libpq in the wheel, so no system build deps are required.
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
 COPY src ./src
 RUN pip install --upgrade pip && pip install -e .
 

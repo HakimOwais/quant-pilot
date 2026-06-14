@@ -74,6 +74,8 @@ def ingest_ohlcv(symbols: list[str], start: str, end: str) -> dict:
 def execute_backtest(prices: PriceData, strategy: str = "momentum", rf: float = 0.065) -> dict:
     """Run a strategy through the engine and compute performance + significance. Pure-ish: prices
     in, metrics out (testable with synthetic data, no IO)."""
+    if prices.close is None or prices.close.empty:
+        raise ValueError("no price data for the requested symbols/date range (ingest OHLCV first)")
     if strategy == "momentum":
         weights = MomentumStrategy().generate_weights(prices.close)
     else:

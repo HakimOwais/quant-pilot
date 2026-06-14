@@ -102,3 +102,14 @@ def test_execute_backtest_produces_metrics():
     metrics = execute_backtest(PriceData(open=close, close=close), strategy="momentum")
     assert "performance" in metrics and "significance" in metrics
     assert metrics["summary"]["total_return"] > 0
+
+
+def test_execute_backtest_empty_data_raises_clear_error():
+    import pandas as pd
+    import pytest
+
+    from quant_pilot.engine.backtest.engine import PriceData
+    from quant_pilot.workers.tasks import execute_backtest
+
+    with pytest.raises(ValueError, match="no price data"):
+        execute_backtest(PriceData(open=pd.DataFrame(), close=pd.DataFrame()))
