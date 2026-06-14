@@ -1,0 +1,1 @@
+"""MarketDataProvider adapters: yfinance, nsepython."""

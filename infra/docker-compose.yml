@@ -1,0 +1,76 @@
+name: quant-pilot
+
+# All host ports bind to 127.0.0.1 only (SYSTEM_DESIGN §8.1: localhost by default).
+# Run from repo root:  docker compose -f infra/docker-compose.yml --env-file .env up -d --build
+
+x-app-env: &app-env
+  QP_ENV: ${QP_ENV:-dev}
+  QP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-quant}:${POSTGRES_PASSWORD:-quant}@db:5432/${POSTGRES_DB:-quant_pilot}
+  QP_REDIS_URL: redis://redis:6379/0
+  QP_SESSION_SECRET: ${QP_SESSION_SECRET:?set QP_SESSION_SECRET in .env}
+  QP_CORS_ORIGINS: ${QP_CORS_ORIGINS:-http://localhost:3000}
+  QP_TRADING_ENABLED: ${QP_TRADING_ENABLED:-false}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-quant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quant}
+      POSTGRES_DB: ${POSTGRES_DB:-quant_pilot}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quant}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: uvicorn quant_pilot.api.main:app --host 0.0.0.0 --port 8000
+    environment: *app-env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: rq worker --url redis://redis:6379/0 default
+    environment: *app-env
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: python -m quant_pilot.workers.scheduler
+    environment: *app-env
+    depends_on:
+      redis: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:

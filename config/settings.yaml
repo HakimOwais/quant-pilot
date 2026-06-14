@@ -1,0 +1,86 @@
+# Quant / strategy parameters (loaded by the engine, NOT by api/config.settings).
+# Infra + secrets are env-driven (.env / QP_* vars). Keep no secrets in this file.
+# Mirrors MASTER_PROMPT.md §Configuration File (production-corrected).
+
+market:
+  exchange: NSE
+  benchmark: "^NSEI"            # NIFTY 50; use NIFTY 500 TR for matched benchmarking
+  benchmark_tr: "NIFTY500_TR"
+  india_vix: "^INDIAVIX"
+  risk_free_rate: 0.065         # RBI repo rate, update periodically
+  currency: INR
+
+universe:
+  index: NIFTY500
+  point_in_time: true           # NON-NEGOTIABLE #1 — survivorship-free membership
+  min_market_cap_cr: 1000
+  min_avg_daily_volume: 500000
+
+data:
+  start_date: "2015-01-01"
+  end_date: "2025-12-31"
+  frequency: "1d"
+  cache_dir: "data/storage/"
+  verify_corporate_actions: true
+
+transaction_costs:
+  # --- explicit ---
+  flat_fee_per_order: 20
+  brokerage_pct: 0.0003
+  stt_delivery: 0.001
+  stt_intraday_sell: 0.00025
+  exchange_charges_nse: 0.0000335
+  gst: 0.18
+  sebi_charges_per_cr: 10
+  stamp_duty_buy: 0.00015
+  # --- market impact (dominant cost) ---
+  impact_k: 0.9
+  max_adv_participation: 0.10
+  slippage_buffer_bps: 5
+  use_quoted_spread: true
+
+strategy:
+  momentum:
+    lookback_months: [6, 12]
+    skip_months: 1
+    rebalance: monthly
+    long_pct: 0.20
+    turnover_band: 0.05         # no-trade buffer to control turnover
+    vrp_percentile_window_days: 504   # adaptive VRP percentile, not static VIX levels
+
+  pairs_trading:
+    cointegration_pvalue: 0.05
+    fdr_correction: benjamini_hochberg
+    require_oos_confirmation: true
+    require_liquid_ssf_both_legs: true
+    structural_break_test: cusum
+    half_life_min_days: 5
+    half_life_max_days: 60
+    entry_zscore: 2.0
+    exit_zscore: 0.0
+    stop_zscore: 3.5
+    # mc_confidence_threshold removed — in-sample OU resimulation was circular.
+
+risk:
+  max_position_pct: 0.05
+  max_sector_pct: 0.25
+  daily_var_confidence: 0.99
+  risk_measure: cvar
+  var_distribution: student_t
+  kelly_fraction: 0.25
+  max_portfolio_drawdown: 0.15
+
+monte_carlo:
+  n_paths: 10000
+  n_stress_simulations: 1000
+  var_confidence: 0.99
+  bootstrap: stationary
+
+validation:
+  deflated_sharpe: true
+  n_trials_tracked: true
+  hac_standard_errors: true
+
+attribution:
+  factors: [market, size, value, momentum]
+  alpha_significance: 0.05
