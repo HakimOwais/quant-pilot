@@ -4,6 +4,7 @@ Production-grade algorithmic trading platform for Indian equity markets (NSE/BSE
 
 - **Quant / strategy spec:** [`MASTER_PROMPT.md`](MASTER_PROMPT.md)
 - **Platform / architecture / security:** [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md)
+- **Implementation wiki (step-by-step log):** [`docs/wiki/`](docs/wiki/README.md)
 
 The quant **engine** is a pure, UI-agnostic library behind a typed **FastAPI** contract.
 A future dashboard consumes that contract as a generated client. Long work (backtests,

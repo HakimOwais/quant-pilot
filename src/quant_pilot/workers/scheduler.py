@@ -15,9 +15,9 @@ from quant_pilot.workers.queue import get_queue
 
 def build_scheduler() -> BlockingScheduler:
     sched = BlockingScheduler(timezone="Asia/Kolkata")
-    # Nightly OHLCV refresh after the NSE close (placeholder symbol list).
+    # Nightly OHLCV refresh after the NSE close (symbol list/date window wired in a later phase).
     sched.add_job(
-        lambda: get_queue().enqueue(tasks.ingest_data, []),
+        lambda: get_queue().enqueue(tasks.ingest_ohlcv, [], "2015-01-01", "2025-12-31"),
         trigger="cron",
         hour=18,
         minute=0,

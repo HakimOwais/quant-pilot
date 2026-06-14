@@ -29,6 +29,12 @@ dependencies = [
   "argon2-cffi>=23.1",       # password hashing
   "pyotp>=2.9",              # TOTP 2FA
   "keyring>=25.5",           # OS keychain secret store
+  # --- data / engine (Phase 1 data infrastructure) ---
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "pyarrow>=16.0",
+  "yfinance>=0.2.40",
+  "pandas-market-calendars>=4.4",
   # --- misc ---
   "structlog>=24.4",
   "pyyaml>=6.0",
@@ -44,10 +50,10 @@ dev = [
   "types-pyyaml>=6.0",
 ]
 
-# Engine-heavy quant deps are added in their own phases to keep the platform lean:
-#   data:        yfinance, nsepython, pandas, pyarrow, pandas_market_calendars
+# Remaining engine-heavy deps are added in their own phases to keep the image lean:
+#   nse:         nsepython (option chains, FII/DII) — VRP / Black-Scholes phase
 #   backtest:    vectorbt, backtrader
-#   models:      numpy, scipy, statsmodels, arch
+#   models:      scipy, statsmodels, arch
 #   analysis:    quantstats, pyfolio, matplotlib, plotly
 #   ml (opt):    lightgbm, xgboost, scikit-learn, shap
 
