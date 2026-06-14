@@ -71,6 +71,19 @@ services:
     depends_on:
       redis: { condition: service_healthy }
 
+  # Dashboard: built with Node INSIDE the container (no host Node needed), served by nginx.
+  # The API base is baked at build time; the browser (on the host) reaches the API at localhost:8000.
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: ${QP_API_BASE:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
   redisdata:

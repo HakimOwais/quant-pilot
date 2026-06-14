@@ -29,8 +29,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 14 | PaperBroker (Broker port, simulated) | 14 | ✅ done | [11-paper-broker.md](11-paper-broker.md) |
 | 15 | Gated order/approval path (2FA, kill switch, audit) | 15 | ✅ done | [12-order-approval-path.md](12-order-approval-path.md) |
 | 16 | SmartAPI broker adapter + live readiness (§8.7) | 16 | ✅ done | [13-smartapi-live-readiness.md](13-smartapi-live-readiness.md) |
-| — | Dashboard (read-only) — needs Node toolchain | 9 | ⏳ next | — |
+| 9 | Read-only dashboard (containerized) | 9 | ✅ shipped¹ | [14-dashboard.md](14-dashboard.md) |
 | — | Live broker factory + reconciliation loop | 17+ | ⬜ planned | — |
+
+¹ Dashboard builds inside Docker (`make up`); not verified in this env (no Node/Docker daemon here).
 
 ## Current capability snapshot
 
@@ -58,6 +60,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   kill switch, buying-power check, and append-only audit — all off by default.
 - SmartAPI (Angel One) broker adapter behind the Broker port (injected SDK, offline-tested) +
   live-readiness checks: reconciliation, slippage monitor, paper-vs-sim P&L divergence.
+- Read-only dashboard (Vite+React+TS) that builds inside Docker — no host Node; `make up` serves
+  it at :3000 alongside the API.
 - Postgres schema via Alembic (`0001_initial`, `0002_orders`).
 - Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (126 tests).
 

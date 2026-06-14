@@ -28,13 +28,18 @@ curl http://127.0.0.1:8000/api/v1/system/health   # readiness (DB + Redis)
 
 ## Full stack (Docker)
 
+No host Node/Python needed — the dashboard builds with Node *inside* its container.
+
 ```bash
 cp infra/.env.example .env          # then edit; set QP_SESSION_SECRET
-make up                             # api + worker + scheduler + postgres + redis
+make up                             # api + worker + scheduler + postgres + redis + dashboard
 make migrate                        # apply DB migrations
 make logs                           # tail
 make down
 ```
+
+- Dashboard: http://localhost:3000   (read-only: system status, backtests, point-in-time universe)
+- API + Swagger: http://localhost:8000/docs
 
 ## Developer workflow
 

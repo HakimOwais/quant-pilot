@@ -230,3 +230,4 @@ data/storage/*
 .ruff_cache/
 *.egg-info/
 frontend/node_modules/
+frontend/dist/
