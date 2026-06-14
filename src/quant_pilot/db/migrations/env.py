@@ -6,11 +6,10 @@ from logging.config import fileConfig
 
 from alembic import context
 
+# Importing the ORM models registers their tables on Base.metadata for autogenerate.
+from quant_pilot.adapters.persistence import models as _models  # noqa: F401
 from quant_pilot.config.settings import get_settings
 from quant_pilot.db.base import Base, get_engine
-
-# NOTE: import ORM model modules here as they are created so Alembic autogenerate
-# can see them on Base.metadata. (None yet — added from step 1 onward.)
 
 config = context.config
 if config.config_file_name is not None:

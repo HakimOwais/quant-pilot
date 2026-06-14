@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://quant:quant@localhost:5432/quant_pilot"
     redis_url: str = "redis://localhost:6379/0"
 
+    # --- storage paths (parquet datalake + artifact store) ---
+    data_dir: str = "data/storage"
+    artifacts_dir: str = "data/storage/artifacts"
+
     # --- trading safety ---  (off by default; SYSTEM_DESIGN §8.2)
     trading_enabled: bool = False
 
