@@ -14,6 +14,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -78,6 +79,22 @@ class InstrumentORM(Base):
     sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
     has_liquid_ssf: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     lot_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class OrderORM(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(32), nullable=False)
+    side: Mapped[str] = mapped_column(String(8), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    order_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    limit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, index=True)
+    broker_order_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class UniverseMembershipORM(Base):

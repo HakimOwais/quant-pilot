@@ -9,10 +9,14 @@ here yet — it arrives with the order/execution layer, gated behind trading_ena
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
+from quant_pilot.api.deps import get_broker, get_repository
+from quant_pilot.api.security.auth import require_trading_enabled, verify_totp
 from quant_pilot.config.settings import get_settings
+from quant_pilot.domain import ports
+from quant_pilot.domain.models import AuditEvent
 
 router = APIRouter(tags=["system"])
 router_v1 = APIRouter(prefix="/system", tags=["system"])
@@ -73,3 +77,49 @@ def _check_redis() -> bool:
         return bool(client.ping())
     except Exception:
         return False
+
+
+class HaltState(BaseModel):
+    halted: bool
+
+
+@router_v1.post("/halt", response_model=HaltState)
+def halt_trading(
+    request: Request,
+    broker: ports.Broker = Depends(get_broker),
+    repo: ports.Repository = Depends(get_repository),
+) -> HaltState:
+    """Kill switch — always available (emergency-safe direction). Halts the broker."""
+    broker.halt()  # type: ignore[attr-defined]
+    repo.append_audit(
+        AuditEvent(
+            actor="local-user",
+            action="system.halt",
+            resource_type="system",
+            ip=request.client.host if request.client else None,
+        )
+    )
+    return HaltState(halted=True)
+
+
+@router_v1.post(
+    "/resume",
+    response_model=HaltState,
+    dependencies=[Depends(require_trading_enabled), Depends(verify_totp)],
+)
+def resume_trading(
+    request: Request,
+    broker: ports.Broker = Depends(get_broker),
+    repo: ports.Repository = Depends(get_repository),
+) -> HaltState:
+    """Re-enable trading after a halt — gated by trading_enabled + 2FA step-up."""
+    broker.resume()  # type: ignore[attr-defined]
+    repo.append_audit(
+        AuditEvent(
+            actor="local-user",
+            action="system.resume",
+            resource_type="system",
+            ip=request.client.host if request.client else None,
+        )
+    )
+    return HaltState(halted=False)

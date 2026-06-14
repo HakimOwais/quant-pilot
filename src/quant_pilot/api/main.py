@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from quant_pilot.api.routers import backtests, jobs, system, universe
+from quant_pilot.api.routers import backtests, jobs, orders, portfolio, system, universe
 from quant_pilot.api.security.headers import SecurityHeadersMiddleware
 from quant_pilot.config.settings import get_settings
 from quant_pilot.log import configure_logging, get_logger
@@ -64,6 +64,8 @@ def create_app() -> FastAPI:
     app.include_router(backtests.router, prefix=API_V1)
     app.include_router(jobs.router, prefix=API_V1)
     app.include_router(universe.router, prefix=API_V1)
+    app.include_router(orders.router, prefix=API_V1)
+    app.include_router(portfolio.router, prefix=API_V1)
     return app
 
 

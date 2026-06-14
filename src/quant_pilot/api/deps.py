@@ -6,10 +6,13 @@ here (structural conformance check at the composition root).
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from quant_pilot.adapters.artifacts.local_store import LocalArtifactStore
+from quant_pilot.adapters.broker.paper_broker import PaperBroker
 from quant_pilot.adapters.data.parquet_cache import OHLCVCache
 from quant_pilot.adapters.data.yfinance_provider import YFinanceMarketDataProvider
 from quant_pilot.adapters.persistence.repository import SqlAlchemyRepository
@@ -41,3 +44,13 @@ def get_job_queue() -> ports.JobQueue:
     from quant_pilot.workers.queue import RqJobQueue
 
     return RqJobQueue()
+
+
+@lru_cache
+def _paper_broker() -> PaperBroker:
+    return PaperBroker()
+
+
+def get_broker() -> ports.Broker:
+    """App-session PaperBroker singleton (Kite/SmartAPI adapter slots in here later)."""
+    return _paper_broker()

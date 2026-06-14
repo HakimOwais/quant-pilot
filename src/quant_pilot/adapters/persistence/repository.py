@@ -16,6 +16,7 @@ from quant_pilot.adapters.persistence.models import (
     AuditEventORM,
     BacktestRunORM,
     InstrumentORM,
+    OrderORM,
     StrategyConfigORM,
     UniverseMembershipORM,
 )
@@ -24,6 +25,7 @@ from quant_pilot.domain.models import (
     AuditEvent,
     BacktestRun,
     Instrument,
+    Order,
     RunStatus,
     StrategyConfig,
     UniverseMembership,
@@ -118,6 +120,34 @@ class SqlAlchemyRepository:
     def list_audit(self, *, limit: int = 100) -> list[AuditEvent]:
         stmt = select(AuditEventORM).order_by(AuditEventORM.ts.desc()).limit(limit)
         return [AuditEvent.model_validate(o) for o in self.session.scalars(stmt)]
+
+    # --- orders -------------------------------------------------------------
+
+    def save_order(self, order: Order) -> Order:
+        orm = self.session.get(OrderORM, order.id)
+        if orm is None:
+            orm = OrderORM(id=order.id)
+            self.session.add(orm)
+        orm.symbol = order.symbol
+        orm.side = order.side.value
+        orm.quantity = order.quantity
+        orm.order_type = order.order_type.value
+        orm.limit_price = order.limit_price
+        orm.status = order.status.value
+        orm.broker_order_id = order.broker_order_id
+        orm.reason = order.reason
+        orm.created_at = order.created_at
+        orm.approved_at = order.approved_at
+        self.session.flush()
+        return Order.model_validate(orm)
+
+    def get_order(self, order_id: str) -> Order | None:
+        orm = self.session.get(OrderORM, order_id)
+        return Order.model_validate(orm) if orm else None
+
+    def list_orders(self, *, limit: int = 100) -> list[Order]:
+        stmt = select(OrderORM).order_by(OrderORM.created_at.desc()).limit(limit)
+        return [Order.model_validate(o) for o in self.session.scalars(stmt)]
 
     # --- instruments + point-in-time universe -------------------------------
 

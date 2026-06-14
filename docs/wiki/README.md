@@ -27,8 +27,9 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 13 | Risk layer (CVaR/Kelly sizing, drawdown breaker) | 13 | ✅ done | [09-risk-layer.md](09-risk-layer.md) |
 | 8 | API: read endpoints + job submission + SSE | 8 | ✅ done | [10-api-layer.md](10-api-layer.md) |
 | 14 | PaperBroker (Broker port, simulated) | 14 | ✅ done | [11-paper-broker.md](11-paper-broker.md) |
+| 15 | Gated order/approval path (2FA, kill switch, audit) | 15 | ✅ done | [12-order-approval-path.md](12-order-approval-path.md) |
 | — | Dashboard (read-only) — needs Node toolchain | 9 | ⏳ next | — |
-| — | Gated order/approval path + live readiness | 15+ | ⬜ planned | — |
+| — | Kite adapter + live readiness (§8.7) | 16+ | ⬜ planned | — |
 
 ## Current capability snapshot
 
@@ -52,8 +53,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   behind ports (RQ or in-memory job queue); OpenAPI at /docs for the future dashboard client.
 - PaperBroker: the Broker port simulated — impact/cost-aware fills, limit orders, kill switch,
   buying-power check, positions/margin (Kite adapter slots into the same port later).
-- Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (107 tests).
+- Gated order/approval path: propose→approve with trading gate + TOTP 2FA step-up, server-side
+  kill switch, buying-power check, and append-only audit — all off by default.
+- Postgres schema via Alembic (`0001_initial`, `0002_orders`).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (114 tests).
 
 ## Conventions
 
