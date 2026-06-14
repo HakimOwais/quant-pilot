@@ -26,8 +26,9 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 11 | Pairs trading (cointegration → OU → SSF) | 11–12 | ✅ done | [08-pairs-trading.md](08-pairs-trading.md) |
 | 13 | Risk layer (CVaR/Kelly sizing, drawdown breaker) | 13 | ✅ done | [09-risk-layer.md](09-risk-layer.md) |
 | 8 | API: read endpoints + job submission + SSE | 8 | ✅ done | [10-api-layer.md](10-api-layer.md) |
-| — | Dashboard (read-only) | 9 | ⏳ next | — |
-| — | PaperBroker + live readiness | 14+ | ⬜ planned | — |
+| 14 | PaperBroker (Broker port, simulated) | 14 | ✅ done | [11-paper-broker.md](11-paper-broker.md) |
+| — | Dashboard (read-only) — needs Node toolchain | 9 | ⏳ next | — |
+| — | Gated order/approval path + live readiness | 15+ | ⬜ planned | — |
 
 ## Current capability snapshot
 
@@ -49,8 +50,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 - Risk layer: fractional-Kelly / CVaR sizing, position + sector caps, latching drawdown breaker.
 - API: async backtest submission (202 + job), run/universe read endpoints, SSE job stream — all
   behind ports (RQ or in-memory job queue); OpenAPI at /docs for the future dashboard client.
+- PaperBroker: the Broker port simulated — impact/cost-aware fills, limit orders, kill switch,
+  buying-power check, positions/margin (Kite adapter slots into the same port later).
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (99 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (107 tests).
 
 ## Conventions
 
