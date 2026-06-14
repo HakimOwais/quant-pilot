@@ -25,8 +25,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 10 | Attribution + validation (alpha vs beta) | 10 | ✅ done | [07-attribution-validation.md](07-attribution-validation.md) |
 | 11 | Pairs trading (cointegration → OU → SSF) | 11–12 | ✅ done | [08-pairs-trading.md](08-pairs-trading.md) |
 | 13 | Risk layer (CVaR/Kelly sizing, drawdown breaker) | 13 | ✅ done | [09-risk-layer.md](09-risk-layer.md) |
-| — | API read endpoints + job submission + SSE | 8 | ⏳ next | — |
-| — | Dashboard (read-only) | 9 | ⬜ planned | — |
+| 8 | API: read endpoints + job submission + SSE | 8 | ✅ done | [10-api-layer.md](10-api-layer.md) |
+| — | Dashboard (read-only) | 9 | ⏳ next | — |
 | — | PaperBroker + live readiness | 14+ | ⬜ planned | — |
 
 ## Current capability snapshot
@@ -47,8 +47,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 - Pairs trading: cointegration (Engle-Granger) + FDR control, OU half-life filter, OOS
   confirmation, no-mean-cross break guard, SSF-tradeable signed weights.
 - Risk layer: fractional-Kelly / CVaR sizing, position + sector caps, latching drawdown breaker.
+- API: async backtest submission (202 + job), run/universe read endpoints, SSE job stream — all
+  behind ports (RQ or in-memory job queue); OpenAPI at /docs for the future dashboard client.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (94 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (99 tests).
 
 ## Conventions
 

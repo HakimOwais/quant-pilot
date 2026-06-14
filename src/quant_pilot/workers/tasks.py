@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import date
+from datetime import UTC, date, datetime
 
+import pandas as pd
 from sqlalchemy.orm import Session
 
 from quant_pilot.adapters.data.parquet_cache import OHLCVCache
@@ -17,7 +18,12 @@ from quant_pilot.adapters.data.yfinance_provider import YFinanceMarketDataProvid
 from quant_pilot.adapters.persistence.repository import SqlAlchemyRepository
 from quant_pilot.config.settings import get_settings
 from quant_pilot.db.base import get_sessionmaker
+from quant_pilot.domain.models import RunStatus
+from quant_pilot.engine.analysis.performance import performance_stats
+from quant_pilot.engine.analysis.validation import sharpe_significance
+from quant_pilot.engine.backtest.engine import BacktestEngine, PriceData
 from quant_pilot.engine.data.universe import build_membership_intervals, read_membership_csv
+from quant_pilot.engine.strategies.momentum import MomentumStrategy
 from quant_pilot.log import get_logger
 
 log = get_logger("worker")
@@ -63,3 +69,69 @@ def ingest_ohlcv(symbols: list[str], start: str, end: str) -> dict:
                 log.warning("ohlcv.failed", symbol=symbol, error=str(exc))
                 failed.append(symbol)
     return {"ok": ok, "failed": failed}
+
+
+def execute_backtest(prices: PriceData, strategy: str = "momentum", rf: float = 0.065) -> dict:
+    """Run a strategy through the engine and compute performance + significance. Pure-ish: prices
+    in, metrics out (testable with synthetic data, no IO)."""
+    if strategy == "momentum":
+        weights = MomentumStrategy().generate_weights(prices.close)
+    else:
+        raise ValueError(f"unsupported strategy: {strategy!r}")
+    result = BacktestEngine().run(prices, weights)
+    perf = performance_stats(result.returns, rf=rf)
+    sig = sharpe_significance(result.returns, n_resamples=200)
+    return {
+        "summary": result.summary,
+        "performance": perf.model_dump(),
+        "significance": sig.model_dump(),
+    }
+
+
+def _prices_from_cache(symbols: list[str], start: str, end: str) -> PriceData:
+    cache = OHLCVCache(get_settings().data_dir)
+    closes, opens = {}, {}
+    s, e = pd.Timestamp(start), pd.Timestamp(end)
+    for sym in symbols:
+        df = cache.read(sym)
+        if df is None or df.empty:
+            continue
+        window = df[(df.index >= s) & (df.index <= e)]
+        closes[sym] = window["close"]
+        opens[sym] = window["open"]
+    return PriceData(open=pd.DataFrame(opens), close=pd.DataFrame(closes))
+
+
+def run_backtest(run_id: str) -> dict:
+    """Worker entrypoint: load run, execute, persist metrics/status. Params: symbols, start, end."""
+    with _unit_of_work() as session:
+        run = SqlAlchemyRepository(session).get_backtest_run(run_id)
+        if run is None:
+            return {"error": "run not found", "run_id": run_id}
+        run.status = RunStatus.RUNNING
+        run.started_at = datetime.now(UTC)
+        SqlAlchemyRepository(session).update_backtest_run(run)
+        params = dict(run.params)
+
+    try:
+        prices = _prices_from_cache(
+            params.get("symbols", []),
+            params.get("start", "2015-01-01"),
+            params.get("end", "2025-12-31"),
+        )
+        metrics = execute_backtest(prices, strategy=params.get("strategy", "momentum"))
+        status, error = RunStatus.SUCCEEDED, None
+    except Exception as exc:
+        metrics, status, error = None, RunStatus.FAILED, str(exc)
+        log.warning("backtest.failed", run_id=run_id, error=str(exc))
+
+    with _unit_of_work() as session:
+        repo = SqlAlchemyRepository(session)
+        run = repo.get_backtest_run(run_id)
+        if run is not None:
+            run.status = status
+            run.metrics = metrics
+            run.error = error
+            run.finished_at = datetime.now(UTC)
+            repo.update_backtest_run(run)
+    return {"run_id": run_id, "status": status.value}

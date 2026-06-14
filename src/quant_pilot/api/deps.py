@@ -35,3 +35,9 @@ def get_market_data_provider(
     repository: ports.Repository = Depends(get_repository),
 ) -> ports.MarketDataProvider:
     return YFinanceMarketDataProvider(repository, OHLCVCache(get_settings().data_dir))
+
+
+def get_job_queue() -> ports.JobQueue:
+    from quant_pilot.workers.queue import RqJobQueue
+
+    return RqJobQueue()
