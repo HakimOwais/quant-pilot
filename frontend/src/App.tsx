@@ -1,25 +1,41 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { api, type Bar, type BacktestRun, type Readiness, type UniverseMember } from "./api";
+import {
+  api,
+  type Bar,
+  type BacktestRun,
+  type EquityPoint,
+  type Readiness,
+  type UniverseMember,
+} from "./api";
+import { Badge, Card, Dot, Empty, fmt, LineChart, Metric, Spinner, tone } from "./ui";
 
 type Tab = "overview" | "data" | "backtests" | "universe";
-const TABS: Tab[] = ["overview", "data", "backtests", "universe"];
+const TABS: { id: Tab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "data", label: "Data" },
+  { id: "backtests", label: "Backtests" },
+  { id: "universe", label: "Universe" },
+];
 
 export function App() {
   const [tab, setTab] = useState<Tab>("overview");
   return (
-    <div className="app">
-      <header>
-        <h1>Quant Pilot</h1>
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">◆</span> Quant Pilot
+        </div>
         <nav>
           {TABS.map((t) => (
-            <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-              {t}
+            <button key={t.id} className={tab === t.id ? "nav active" : "nav"} onClick={() => setTab(t.id)}>
+              {t.label}
             </button>
           ))}
         </nav>
-      </header>
-      <main>
+        <div className="sidebar-foot">NSE / BSE · paper</div>
+      </aside>
+      <main className="content">
         {tab === "overview" && <Overview />}
         {tab === "data" && <Data />}
         {tab === "backtests" && <Backtests />}
@@ -30,68 +46,74 @@ export function App() {
 }
 
 function Overview() {
-  const [liveness, setLiveness] = useState("loading…");
+  const [live, setLive] = useState<string>("…");
   const [ready, setReady] = useState<Readiness | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = async () => {
     setErr(null);
     try {
       const h = await api.health();
-      setLiveness(`${h.service} ${h.version} — ${h.status}`);
+      setLive(`${h.service} v${h.version}`);
       setReady(await api.readiness());
     } catch (e) {
       setErr(String(e));
     }
-  }, []);
+  };
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, []);
 
   return (
-    <section>
-      <div className="row">
-        <h2>System</h2>
-        <button onClick={() => void load()}>Refresh</button>
-      </div>
+    <>
+      <PageHead title="Overview" onRefresh={() => void load()} />
       {err && <p className="error">{err}</p>}
-      <p>Liveness: {liveness}</p>
-      {ready && (
-        <ul>
-          <li>
-            Readiness: <b>{ready.status}</b>
-          </li>
-          <li>Database: {ready.database}</li>
-          <li>Redis: {ready.redis}</li>
-          <li>Trading enabled: {String(ready.trading_enabled)}</li>
-        </ul>
-      )}
-    </section>
+      <div className="cards">
+        <Card title="API">
+          <div className="status-line">
+            <Dot ok={!!ready} /> {live}
+          </div>
+          <div className="muted">readiness: {ready?.status ?? "…"}</div>
+        </Card>
+        <Card title="Dependencies">
+          <div className="status-line">
+            <Dot ok={ready?.database === "ok"} /> database — {ready?.database ?? "…"}
+          </div>
+          <div className="status-line">
+            <Dot ok={ready?.redis === "ok"} /> redis — {ready?.redis ?? "…"}
+          </div>
+        </Card>
+        <Card title="Trading">
+          <div className="status-line">
+            <Dot ok={ready?.trading_enabled ?? false} />
+            {ready?.trading_enabled ? "enabled" : "disabled (read-only)"}
+          </div>
+          <div className="muted">orders require trading_enabled + 2FA</div>
+        </Card>
+      </div>
+    </>
   );
 }
 
 function Data() {
-  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS");
-  const [start, setStart] = useState("2018-01-01");
-  const [end, setEnd] = useState("2024-12-31");
+  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS,INFY.NS");
+  const [start, setStart] = useState("2022-01-01");
+  const [end, setEnd] = useState("2024-06-30");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [viewSymbol, setViewSymbol] = useState("RELIANCE.NS");
   const [bars, setBars] = useState<Bar[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  const syms = () =>
-    symbols
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+  const syms = () => symbols.split(",").map((s) => s.trim()).filter(Boolean);
 
   const ingest = async () => {
     setErr(null);
     setMsg(null);
     try {
       const r = await api.ingestOhlcv(syms(), start, end);
-      setMsg(`ingestion queued: job ${r.job_id}`);
+      setMsg(`ingestion queued · job ${r.job_id.slice(0, 8)}`);
     } catch (e) {
       setErr(String(e));
     }
@@ -99,123 +121,213 @@ function Data() {
 
   const loadBars = async () => {
     setErr(null);
+    setBusy(true);
     try {
       setBars(await api.getBars(viewSymbol, start, end));
     } catch (e) {
       setErr(String(e));
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <section>
-      <h2>Data ingestion</h2>
-      <div className="row">
-        <input value={symbols} onChange={(e) => setSymbols(e.target.value)} placeholder="symbols" />
-        <input value={start} onChange={(e) => setStart(e.target.value)} placeholder="start" />
-        <input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="end" />
-        <button onClick={() => void ingest()}>Ingest OHLCV</button>
-      </div>
-      {msg && <p className="muted">{msg}</p>}
+    <>
+      <PageHead title="Data" />
       {err && <p className="error">{err}</p>}
-
-      <h3>View cached bars</h3>
-      <div className="row">
-        <input value={viewSymbol} onChange={(e) => setViewSymbol(e.target.value)} />
-        <button onClick={() => void loadBars()}>Load bars</button>
-        <span className="muted">{bars.length ? `${bars.length} rows` : ""}</span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>date</th>
-            <th>close</th>
-            <th>volume</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bars.slice(-15).map((b) => (
-            <tr key={b.date}>
-              <td>{b.date}</td>
-              <td>{b.close}</td>
-              <td>{b.volume ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+      <Card title="Ingest OHLCV">
+        <div className="form">
+          <input value={symbols} onChange={(e) => setSymbols(e.target.value)} placeholder="comma symbols" />
+          <input value={start} onChange={(e) => setStart(e.target.value)} placeholder="start" />
+          <input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="end" />
+          <button className="primary" onClick={() => void ingest()}>
+            Ingest
+          </button>
+        </div>
+        {msg && <p className="muted">{msg}</p>}
+      </Card>
+      <Card
+        title="Price"
+        actions={
+          <div className="form inline">
+            <input value={viewSymbol} onChange={(e) => setViewSymbol(e.target.value)} />
+            <button onClick={() => void loadBars()}>{busy ? <Spinner /> : "Load"}</button>
+          </div>
+        }
+      >
+        {bars.length > 1 ? (
+          <>
+            <LineChart values={bars.map((b) => b.close)} />
+            <div className="muted">
+              {bars.length} bars · last close {fmt.num(bars[bars.length - 1].close)}
+            </div>
+          </>
+        ) : (
+          <Empty>load a symbol to chart its close price</Empty>
+        )}
+      </Card>
+    </>
   );
+}
+
+interface Metrics {
+  summary: {
+    total_return: number;
+    total_costs: number;
+    n_rebalances: number;
+    final_equity: number;
+    initial_capital: number;
+  };
+  performance: { cagr: number; sharpe: number; sortino: number; calmar: number; max_drawdown: number };
+  significance: { deflated_sharpe: number; probabilistic_sharpe: number; p_value: number };
 }
 
 function Backtests() {
   const [runs, setRuns] = useState<BacktestRun[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [equity, setEquity] = useState<EquityPoint[]>([]);
   const [strategy, setStrategy] = useState("momentum");
-  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS");
-  const [selected, setSelected] = useState<BacktestRun | null>(null);
+  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS,INFY.NS");
+  const [start, setStart] = useState("2022-01-01");
+  const [end, setEnd] = useState("2024-06-30");
   const [err, setErr] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setRuns(await api.listBacktests());
-    } catch (e) {
-      setErr(String(e));
-    }
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const rs = await api.listBacktests();
+        if (alive) setRuns(rs);
+      } catch (e) {
+        if (alive) setErr(String(e));
+      }
+    };
+    void tick();
+    const h = setInterval(tick, 4000);
+    return () => {
+      alive = false;
+      clearInterval(h);
+    };
   }, []);
 
+  const detail = selectedId ? (runs.find((r) => r.id === selectedId) ?? null) : null;
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (detail?.status === "succeeded") {
+      let alive = true;
+      api.getEquity(detail.id).then((e) => alive && setEquity(e)).catch(() => undefined);
+      return () => {
+        alive = false;
+      };
+    }
+    setEquity([]);
+    return undefined;
+  }, [detail?.id, detail?.status]);
 
   const submit = async () => {
     setErr(null);
     try {
-      const syms = symbols
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await api.submitBacktest(strategy, { symbols: syms });
-      await load();
+      const params = {
+        symbols: symbols.split(",").map((s) => s.trim()).filter(Boolean),
+        start,
+        end,
+      };
+      const r = await api.submitBacktest(strategy, params);
+      setSelectedId(r.run_id);
+      setRuns(await api.listBacktests());
     } catch (e) {
       setErr(String(e));
     }
   };
 
+  const m = (detail?.metrics as unknown as Metrics | null) ?? null;
+
   return (
-    <section>
-      <h2>Backtests</h2>
-      <div className="row">
-        <select value={strategy} onChange={(e) => setStrategy(e.target.value)}>
-          <option value="momentum">momentum</option>
-          <option value="pairs">pairs</option>
-        </select>
-        <input
-          value={symbols}
-          onChange={(e) => setSymbols(e.target.value)}
-          placeholder="comma-separated symbols"
-        />
-        <button onClick={() => void submit()}>Submit</button>
-        <button onClick={() => void load()}>Refresh</button>
-      </div>
+    <>
+      <PageHead title="Backtests" />
       {err && <p className="error">{err}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>id</th>
-            <th>status</th>
-            <th>requested</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((r) => (
-            <tr key={r.id} className="clickable" onClick={() => setSelected(r)}>
-              <td>{r.id.slice(0, 8)}</td>
-              <td>{r.status}</td>
-              <td>{r.requested_at}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {selected && <pre className="json">{JSON.stringify(selected.metrics ?? selected, null, 2)}</pre>}
-    </section>
+      <Card title="New backtest">
+        <div className="form">
+          <select value={strategy} onChange={(e) => setStrategy(e.target.value)}>
+            <option value="momentum">momentum</option>
+            <option value="pairs">pairs</option>
+          </select>
+          <input value={symbols} onChange={(e) => setSymbols(e.target.value)} placeholder="symbols" />
+          <input value={start} onChange={(e) => setStart(e.target.value)} />
+          <input value={end} onChange={(e) => setEnd(e.target.value)} />
+          <button className="primary" onClick={() => void submit()}>
+            Run
+          </button>
+        </div>
+      </Card>
+
+      <div className="split">
+        <Card title="Runs">
+          {runs.length === 0 ? (
+            <Empty>no runs yet</Empty>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>status</th>
+                  <th>requested</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr
+                    key={r.id}
+                    className={`clickable ${r.id === selectedId ? "sel" : ""}`}
+                    onClick={() => setSelectedId(r.id)}
+                  >
+                    <td className="mono">{r.id.slice(0, 8)}</td>
+                    <td>
+                      <Badge status={r.status} />
+                    </td>
+                    <td className="muted">{r.requested_at?.slice(0, 16).replace("T", " ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        <Card title={detail ? `Run ${detail.id.slice(0, 8)}` : "Detail"} actions={detail && <Badge status={detail.status} />}>
+          {!detail && <Empty>select a run</Empty>}
+          {detail?.status === "failed" && <p className="error">{detail.error}</p>}
+          {detail && !m && detail.status !== "failed" && (
+            <Empty>
+              running… <Spinner />
+            </Empty>
+          )}
+          {m && (
+            <>
+              <div className="metrics-grid">
+                <Metric label="Total Return" value={fmt.pct(m.summary.total_return)} tone={tone(m.summary.total_return)} />
+                <Metric label="CAGR" value={fmt.pct(m.performance.cagr)} tone={tone(m.performance.cagr)} />
+                <Metric label="Sharpe" value={fmt.num(m.performance.sharpe)} />
+                <Metric label="Sortino" value={fmt.num(m.performance.sortino)} />
+                <Metric label="Calmar" value={fmt.num(m.performance.calmar)} />
+                <Metric label="Max DD" value={fmt.pct(m.performance.max_drawdown)} tone="neg" />
+                <Metric label="Deflated Sharpe" value={fmt.num(m.significance.deflated_sharpe)} />
+                <Metric label="Final Equity" value={fmt.money(m.summary.final_equity)} />
+                <Metric label="Costs" value={fmt.money(m.summary.total_costs)} tone="neg" />
+                <Metric label="Rebalances" value={fmt.num(m.summary.n_rebalances, 0)} />
+              </div>
+              {equity.length > 1 && (
+                <>
+                  <h4>Equity curve</h4>
+                  <LineChart values={equity.map((e) => e.equity)} baseline={m.summary.initial_capital} />
+                  <h4>Drawdown</h4>
+                  <LineChart values={equity.map((e) => e.drawdown)} stroke="#ff6b6b" baseline={0} />
+                </>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
+    </>
   );
 }
 
@@ -235,32 +347,49 @@ function Universe() {
   };
 
   return (
-    <section>
-      <h2>Universe (point-in-time)</h2>
-      <div className="row">
-        <input value={index} onChange={(e) => setIndex(e.target.value)} />
-        <input value={asOf} onChange={(e) => setAsOf(e.target.value)} placeholder="YYYY-MM-DD" />
-        <button onClick={() => void load()}>Load</button>
-      </div>
+    <>
+      <PageHead title="Universe" />
       {err && <p className="error">{err}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>symbol</th>
-            <th>from</th>
-            <th>to</th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((m) => (
-            <tr key={m.symbol + m.effective_from}>
-              <td>{m.symbol}</td>
-              <td>{m.effective_from}</td>
-              <td>{m.effective_to ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+      <Card title="Point-in-time membership">
+        <div className="form">
+          <input value={index} onChange={(e) => setIndex(e.target.value)} />
+          <input value={asOf} onChange={(e) => setAsOf(e.target.value)} placeholder="YYYY-MM-DD" />
+          <button className="primary" onClick={() => void load()}>
+            Load
+          </button>
+        </div>
+        {members.length === 0 ? (
+          <Empty>query an index as of a date</Empty>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>symbol</th>
+                <th>from</th>
+                <th>to</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((mm) => (
+                <tr key={mm.symbol + mm.effective_from}>
+                  <td className="mono">{mm.symbol}</td>
+                  <td className="muted">{mm.effective_from}</td>
+                  <td className="muted">{mm.effective_to ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+    </>
+  );
+}
+
+function PageHead({ title, onRefresh }: { title: string; onRefresh?: () => void }) {
+  return (
+    <div className="page-head">
+      <h2>{title}</h2>
+      {onRefresh && <button onClick={onRefresh}>Refresh</button>}
+    </div>
   );
 }

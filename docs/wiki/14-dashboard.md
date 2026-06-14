@@ -58,7 +58,28 @@ build; first `make up` on a machine with Docker is the verification. Python suit
 - `trading_enabled=false` by default, so order/portfolio endpoints 403 — the dashboard sticks to
   read-only views to match.
 
+## Update — UI redesign + charts (verified in Docker)
+
+The dashboard was redesigned for a real quant-tool feel and is now **built/run-verified in Docker**:
+
+- **Layout**: sidebar nav + cards, status dots, status badges, spinners, empty states, dark theme.
+- **Tearsheet** for backtests: metric tiles (Total Return, CAGR, Sharpe/Sortino/Calmar, Max DD,
+  Deflated Sharpe, Final Equity, Costs) with green/red tone, plus an **equity-curve chart** and a
+  **drawdown chart**.
+- **Charts** are a dependency-free SVG `LineChart` ([`src/ui.tsx`](../../frontend/src/ui.tsx)) — no
+  charting lib to break.
+- **Live polling**: the runs list/detail refresh every 4s so a backtest goes
+  queued → running → succeeded in the UI; the equity curve loads on completion.
+- **Data tab** charts the close price of a loaded symbol.
+
+New supporting API: `GET /api/v1/backtests/{id}/equity` — the engine persists the equity/drawdown
+curve as an artifact (shared datalake volume) and the endpoint serves it.
+
+Verified live: built the frontend image (strict `tsc` + `vite build` clean), ran a momentum
+backtest on real NSE data, and the equity endpoint returned **613 points** (₹1.0M → ₹1.31M) that
+the chart renders.
+
 ## Next
 
-Verify the build on a Docker host; optionally commit the generated `package-lock.json`; later add a
-gated order panel (TOTP entry) and live positions once trading is enabled.
+Optionally commit the generated `package-lock.json`; add a gated order panel (TOTP entry) and live
+positions once trading is enabled; richer charts (tooltips/axes) if desired.

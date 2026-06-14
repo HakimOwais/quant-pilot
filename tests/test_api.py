@@ -102,6 +102,31 @@ def test_execute_backtest_produces_metrics():
     metrics = execute_backtest(PriceData(open=close, close=close), strategy="momentum")
     assert "performance" in metrics and "significance" in metrics
     assert metrics["summary"]["total_return"] > 0
+    assert len(metrics["equity_curve"]) > 0
+    assert {"date", "equity", "drawdown"} <= metrics["equity_curve"][0].keys()
+
+
+def test_equity_curve_endpoint(session, tmp_path):
+    from quant_pilot.adapters.artifacts.local_store import LocalArtifactStore
+    from quant_pilot.api.deps import get_artifact_store
+
+    app = create_app()
+    store = LocalArtifactStore(tmp_path)
+
+    def _db():
+        yield session
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_artifact_store] = lambda: store
+    client = TestClient(app)
+
+    store.save_json(
+        "runs/abc/equity.json", [{"date": "2020-01-01", "equity": 1_000_000.0, "drawdown": 0.0}]
+    )
+    ok = client.get("/api/v1/backtests/abc/equity")
+    assert ok.status_code == 200
+    assert ok.json()[0]["equity"] == 1_000_000.0
+    assert client.get("/api/v1/backtests/missing/equity").status_code == 404
 
 
 def test_execute_backtest_empty_data_raises_clear_error():

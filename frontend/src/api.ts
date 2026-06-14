@@ -65,6 +65,12 @@ export interface Bar {
   volume: number | null;
 }
 
+export interface EquityPoint {
+  date: string;
+  equity: number;
+  drawdown: number;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   readiness: () => get<Readiness>("/api/v1/system/health"),
@@ -78,4 +84,5 @@ export const api = {
     post<{ job_id: string }>("/api/v1/data/ohlcv", { symbols, start, end }),
   getBars: (symbol: string, start: string, end: string) =>
     get<Bar[]>(`/api/v1/data/ohlcv/${symbol}?start=${start}&end=${end}`),
+  getEquity: (runId: string) => get<EquityPoint[]>(`/api/v1/backtests/${runId}/equity`),
 };

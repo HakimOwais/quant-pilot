@@ -62,7 +62,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 - SmartAPI (Angel One) broker adapter behind the Broker port (injected SDK, offline-tested) +
   live-readiness checks: reconciliation, slippage monitor, paper-vs-sim P&L divergence.
 - Read-only dashboard (Vite+React+TS) that builds inside Docker — no host Node; `make up` serves
-  it at :3000 alongside the API.
+  it at :3000. Redesigned with a sidebar layout, metric-tile tearsheet, SVG equity/drawdown +
+  price charts, status badges, and 4s live polling (backed by GET /backtests/{id}/equity).
 - Postgres schema via Alembic (`0001_initial`, `0002_orders`).
 - Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (126 tests).
 

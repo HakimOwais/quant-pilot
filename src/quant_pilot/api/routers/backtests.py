@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from quant_pilot.api.deps import get_job_queue, get_repository
-from quant_pilot.api.schemas.backtests import BacktestCreate, BacktestSubmitOut
+from quant_pilot.api.deps import get_artifact_store, get_job_queue, get_repository
+from quant_pilot.api.schemas.backtests import BacktestCreate, BacktestSubmitOut, EquityPoint
 from quant_pilot.domain import ports
 from quant_pilot.domain.models import BacktestRun, RunStatus, StrategyConfig
 
@@ -44,3 +44,13 @@ def get_backtest(run_id: str, repo: ports.Repository = Depends(get_repository)) 
     if run is None:
         raise HTTPException(status_code=404, detail="backtest run not found")
     return run
+
+
+@router.get("/{run_id}/equity", response_model=list[EquityPoint])
+def get_equity_curve(
+    run_id: str, store: ports.ArtifactStore = Depends(get_artifact_store)
+) -> list[EquityPoint]:
+    key = f"runs/{run_id}/equity.json"
+    if not store.exists(key):
+        raise HTTPException(status_code=404, detail="equity curve not available")
+    return store.load_json(key)

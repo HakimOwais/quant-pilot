@@ -18,3 +18,9 @@ class BacktestSubmitOut(BaseModel):
     run_id: str
     job_id: str
     status: RunStatus
+
+
+class EquityPoint(BaseModel):
+    date: str
+    equity: float
+    drawdown: float

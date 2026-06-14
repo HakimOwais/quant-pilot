@@ -13,13 +13,14 @@ from datetime import UTC, date, datetime
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from quant_pilot.adapters.artifacts.local_store import LocalArtifactStore
 from quant_pilot.adapters.data.parquet_cache import OHLCVCache
 from quant_pilot.adapters.data.yfinance_provider import YFinanceMarketDataProvider
 from quant_pilot.adapters.persistence.repository import SqlAlchemyRepository
 from quant_pilot.config.settings import get_settings
 from quant_pilot.db.base import get_sessionmaker
 from quant_pilot.domain.models import RunStatus
-from quant_pilot.engine.analysis.performance import performance_stats
+from quant_pilot.engine.analysis.performance import drawdown_series, performance_stats
 from quant_pilot.engine.analysis.validation import sharpe_significance
 from quant_pilot.engine.backtest.engine import BacktestEngine, PriceData
 from quant_pilot.engine.data.universe import build_membership_intervals, read_membership_csv
@@ -83,10 +84,16 @@ def execute_backtest(prices: PriceData, strategy: str = "momentum", rf: float = 
     result = BacktestEngine().run(prices, weights)
     perf = performance_stats(result.returns, rf=rf)
     sig = sharpe_significance(result.returns, n_resamples=200)
+    dd = drawdown_series(result.returns)
+    equity_curve = [
+        {"date": pd.Timestamp(ts).date().isoformat(), "equity": float(eq), "drawdown": float(d)}
+        for ts, eq, d in zip(result.equity.index, result.equity.to_numpy(), dd.to_numpy())
+    ]
     return {
         "summary": result.summary,
         "performance": perf.model_dump(),
         "significance": sig.model_dump(),
+        "equity_curve": equity_curve,
     }
 
 
@@ -122,6 +129,11 @@ def run_backtest(run_id: str) -> dict:
             params.get("end", "2025-12-31"),
         )
         metrics = execute_backtest(prices, strategy=params.get("strategy", "momentum"))
+        curve = metrics.pop("equity_curve", None)
+        if curve:
+            LocalArtifactStore(get_settings().artifacts_dir).save_json(
+                f"runs/{run_id}/equity.json", curve
+            )
         status, error = RunStatus.SUCCEEDED, None
     except Exception as exc:
         metrics, status, error = None, RunStatus.FAILED, str(exc)
