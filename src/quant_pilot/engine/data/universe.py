@@ -17,11 +17,14 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
 from quant_pilot.domain.models import UniverseMembership
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 Action = Literal["add", "drop"]
 
@@ -105,3 +108,28 @@ def build_membership_intervals(events: Iterable[MembershipEvent]) -> list[Univer
                 UniverseMembership(index=index, symbol=symbol, effective_from=open_from)
             )
     return intervals
+
+
+def membership_matrix(
+    intervals: Iterable[UniverseMembership],
+    dates: pd.DatetimeIndex,
+    symbols: Sequence[str],
+) -> pd.DataFrame:
+    """Boolean (dates × symbols) eligibility mask from PIT intervals; [from, to) half-open.
+
+    True where the symbol was an index member on that date — the survivorship-free eligibility
+    the momentum strategy filters on.
+    """
+    import pandas as pd
+
+    mask = pd.DataFrame(False, index=dates, columns=list(symbols))
+    for m in intervals:
+        if m.symbol not in mask.columns:
+            continue
+        start = pd.Timestamp(m.effective_from)
+        if m.effective_to is None:
+            sel = mask.index >= start
+        else:
+            sel = (mask.index >= start) & (mask.index < pd.Timestamp(m.effective_to))
+        mask.loc[sel, m.symbol] = True
+    return mask

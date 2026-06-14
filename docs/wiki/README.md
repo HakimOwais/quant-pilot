@@ -21,7 +21,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 3 | Data infrastructure: PIT universe, OHLCV, quality, corp-actions | 3–4 | ✅ done | [03-data-ingestion.md](03-data-ingestion.md) |
 | 5 | Math models (OU, Black-Scholes, Monte Carlo) | 4–6 | ✅ done | [04-math-models.md](04-math-models.md) |
 | 7 | Backtest engine + cost/impact model | 7–8 | ✅ done | [05-backtest-engine.md](05-backtest-engine.md) |
-| — | Momentum strategy + attribution/validation | 9–10 | ⏳ next | — |
+| 9 | Momentum strategy (long-only factor tilt) | 9 | ✅ done | [06-momentum-strategy.md](06-momentum-strategy.md) |
+| 10 | Attribution + validation (alpha vs beta) | 10 | ⏳ next | — |
 | — | API read endpoints + job submission + SSE | 8 | ⬜ planned | — |
 | — | Dashboard (read-only) | 9 | ⬜ planned | — |
 | — | PaperBroker + pairs + risk + live readiness | 10–12 | ⬜ planned | — |
@@ -37,8 +38,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   Monte Carlo GBM/OU paths + fat-tailed (Student-t) VaR/CVaR + stationary bootstrap.
 - Backtest engine: no look-ahead, next-bar fills, Indian explicit costs + market-impact model
   with ADV participation cap and circuit guards.
+- Momentum strategy: PIT-eligible cross-sectional selection, inverse-vol sizing, adaptive VRP
+  regime scaling — producing engine-ready target weights.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (64 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (69 tests).
 
 ## Conventions
 
