@@ -23,10 +23,11 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 7 | Backtest engine + cost/impact model | 7–8 | ✅ done | [05-backtest-engine.md](05-backtest-engine.md) |
 | 9 | Momentum strategy (long-only factor tilt) | 9 | ✅ done | [06-momentum-strategy.md](06-momentum-strategy.md) |
 | 10 | Attribution + validation (alpha vs beta) | 10 | ✅ done | [07-attribution-validation.md](07-attribution-validation.md) |
-| — | Pairs trading (cointegration → OU → SSF) | 11–12 | ⏳ next | — |
-| — | API read endpoints + job submission + SSE | 8 | ⬜ planned | — |
+| 11 | Pairs trading (cointegration → OU → SSF) | 11–12 | ✅ done | [08-pairs-trading.md](08-pairs-trading.md) |
+| 13 | Risk layer (CVaR/Kelly sizing, drawdown breaker) | 13 | ✅ done | [09-risk-layer.md](09-risk-layer.md) |
+| — | API read endpoints + job submission + SSE | 8 | ⏳ next | — |
 | — | Dashboard (read-only) | 9 | ⬜ planned | — |
-| — | Risk layer + PaperBroker + live readiness | 13+ | ⬜ planned | — |
+| — | PaperBroker + live readiness | 14+ | ⬜ planned | — |
 
 ## Current capability snapshot
 
@@ -43,8 +44,11 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   regime scaling — producing engine-ready target weights.
 - Analysis: performance stats, factor attribution (HAC alpha t-stat), and Sharpe validation
   (PSR, Deflated Sharpe, block-bootstrap CI) — the alpha-vs-beta gate.
+- Pairs trading: cointegration (Engle-Granger) + FDR control, OU half-life filter, OOS
+  confirmation, no-mean-cross break guard, SSF-tradeable signed weights.
+- Risk layer: fractional-Kelly / CVaR sizing, position + sector caps, latching drawdown breaker.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (78 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (94 tests).
 
 ## Conventions
 
