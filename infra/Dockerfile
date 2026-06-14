@@ -11,8 +11,11 @@ COPY pyproject.toml README.md alembic.ini ./
 COPY src ./src
 RUN pip install --upgrade pip && pip install -e .
 
-# Run as non-root.
-RUN useradd --create-home app && chown -R app:app /app
+# Run as non-root. Pre-create the datalake mountpoint owned by app so a fresh named
+# volume inherits that ownership (the worker/api write OHLCV parquet here).
+RUN mkdir -p /app/data/storage \
+    && useradd --create-home app \
+    && chown -R app:app /app
 USER app
 
 EXPOSE 8000

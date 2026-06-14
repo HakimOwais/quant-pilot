@@ -46,6 +46,8 @@ services:
       dockerfile: infra/Dockerfile
     command: uvicorn quant_pilot.api.main:app --host 0.0.0.0 --port 8000
     environment: *app-env
+    volumes:
+      - datalake:/app/data/storage   # shared parquet datalake (worker writes, api reads)
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -58,6 +60,8 @@ services:
       dockerfile: infra/Dockerfile
     command: rq worker --url redis://redis:6379/0 default
     environment: *app-env
+    volumes:
+      - datalake:/app/data/storage
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -68,6 +72,8 @@ services:
       dockerfile: infra/Dockerfile
     command: python -m quant_pilot.workers.scheduler
     environment: *app-env
+    volumes:
+      - datalake:/app/data/storage
     depends_on:
       redis: { condition: service_healthy }
 
@@ -87,3 +93,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  datalake:

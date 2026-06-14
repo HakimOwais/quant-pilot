@@ -55,6 +55,16 @@ export interface UniverseMember {
   effective_to: string | null;
 }
 
+export interface Bar {
+  date: string;
+  open: number;
+  high: number | null;
+  low: number | null;
+  close: number;
+  adj_close: number | null;
+  volume: number | null;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   readiness: () => get<Readiness>("/api/v1/system/health"),
@@ -64,4 +74,8 @@ export const api = {
     post<SubmitOut>("/api/v1/backtests", { strategy, params }),
   universe: (index: string, asOf: string) =>
     get<UniverseMember[]>(`/api/v1/universes/${index}/members?as_of=${asOf}`),
+  ingestOhlcv: (symbols: string[], start: string, end: string) =>
+    post<{ job_id: string }>("/api/v1/data/ohlcv", { symbols, start, end }),
+  getBars: (symbol: string, start: string, end: string) =>
+    get<Bar[]>(`/api/v1/data/ohlcv/${symbol}?start=${start}&end=${end}`),
 };

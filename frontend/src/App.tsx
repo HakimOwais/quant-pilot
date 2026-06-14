@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { api, type BacktestRun, type Readiness, type UniverseMember } from "./api";
+import { api, type Bar, type BacktestRun, type Readiness, type UniverseMember } from "./api";
 
-type Tab = "overview" | "backtests" | "universe";
-const TABS: Tab[] = ["overview", "backtests", "universe"];
+type Tab = "overview" | "data" | "backtests" | "universe";
+const TABS: Tab[] = ["overview", "data", "backtests", "universe"];
 
 export function App() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -21,6 +21,7 @@ export function App() {
       </header>
       <main>
         {tab === "overview" && <Overview />}
+        {tab === "data" && <Data />}
         {tab === "backtests" && <Backtests />}
         {tab === "universe" && <Universe />}
       </main>
@@ -66,6 +67,81 @@ function Overview() {
           <li>Trading enabled: {String(ready.trading_enabled)}</li>
         </ul>
       )}
+    </section>
+  );
+}
+
+function Data() {
+  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS");
+  const [start, setStart] = useState("2018-01-01");
+  const [end, setEnd] = useState("2024-12-31");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [viewSymbol, setViewSymbol] = useState("RELIANCE.NS");
+  const [bars, setBars] = useState<Bar[]>([]);
+
+  const syms = () =>
+    symbols
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const ingest = async () => {
+    setErr(null);
+    setMsg(null);
+    try {
+      const r = await api.ingestOhlcv(syms(), start, end);
+      setMsg(`ingestion queued: job ${r.job_id}`);
+    } catch (e) {
+      setErr(String(e));
+    }
+  };
+
+  const loadBars = async () => {
+    setErr(null);
+    try {
+      setBars(await api.getBars(viewSymbol, start, end));
+    } catch (e) {
+      setErr(String(e));
+    }
+  };
+
+  return (
+    <section>
+      <h2>Data ingestion</h2>
+      <div className="row">
+        <input value={symbols} onChange={(e) => setSymbols(e.target.value)} placeholder="symbols" />
+        <input value={start} onChange={(e) => setStart(e.target.value)} placeholder="start" />
+        <input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="end" />
+        <button onClick={() => void ingest()}>Ingest OHLCV</button>
+      </div>
+      {msg && <p className="muted">{msg}</p>}
+      {err && <p className="error">{err}</p>}
+
+      <h3>View cached bars</h3>
+      <div className="row">
+        <input value={viewSymbol} onChange={(e) => setViewSymbol(e.target.value)} />
+        <button onClick={() => void loadBars()}>Load bars</button>
+        <span className="muted">{bars.length ? `${bars.length} rows` : ""}</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>date</th>
+            <th>close</th>
+            <th>volume</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bars.slice(-15).map((b) => (
+            <tr key={b.date}>
+              <td>{b.date}</td>
+              <td>{b.close}</td>
+              <td>{b.volume ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
