@@ -35,6 +35,8 @@ dependencies = [
   "pyarrow>=16.0",
   "yfinance>=0.2.40",
   "pandas-market-calendars>=4.4",
+  # --- mathematical models (OU, Black-Scholes IV, Monte Carlo VaR) ---
+  "scipy>=1.13",
   # --- misc ---
   "structlog>=24.4",
   "pyyaml>=6.0",
@@ -53,7 +55,7 @@ dev = [
 # Remaining engine-heavy deps are added in their own phases to keep the image lean:
 #   nse:         nsepython (option chains, FII/DII) — VRP / Black-Scholes phase
 #   backtest:    vectorbt, backtrader
-#   models:      scipy, statsmodels, arch
+#   models:      statsmodels, arch (cointegration/GARCH) — pairs/vol phase
 #   analysis:    quantstats, pyfolio, matplotlib, plotly
 #   ml (opt):    lightgbm, xgboost, scikit-learn, shap
 

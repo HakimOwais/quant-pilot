@@ -19,8 +19,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 0 | Scaffold (packaging, API skeleton, infra, CI) | 0 | ✅ done | [01-scaffold.md](01-scaffold.md) |
 | 1 | Domain models, ports, adapters, first migration | 1–2 | ✅ done | [02-domain-ports-adapters.md](02-domain-ports-adapters.md) |
 | 3 | Data infrastructure: PIT universe, OHLCV, quality, corp-actions | 3–4 | ✅ done | [03-data-ingestion.md](03-data-ingestion.md) |
-| 5 | Math models (OU, Black-Scholes, Monte Carlo) | 4–6 | ⏳ next | — |
-| — | Backtest engine + costs/impact | 7–8 | ⬜ planned | — |
+| 5 | Math models (OU, Black-Scholes, Monte Carlo) | 4–6 | ✅ done | [04-math-models.md](04-math-models.md) |
+| — | Backtest engine + costs/impact | 7–8 | ⏳ next | — |
 | — | Momentum strategy + attribution/validation | 9–10 | ⬜ planned | — |
 | — | API read endpoints + job submission + SSE | 8 | ⬜ planned | — |
 | — | Dashboard (read-only) | 9 | ⬜ planned | — |
@@ -33,8 +33,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   (Postgres/SQLAlchemy), market data (yfinance), parquet cache, clock.
 - **Point-in-time, survivorship-free** universe ingestion.
 - OHLCV download + parquet cache + liquidity (ADV); data-quality + corporate-action verifiers.
+- Math models: OU fit/half-life/z-score, Black-Scholes pricing/Greeks/IV (from scratch),
+  Monte Carlo GBM/OU paths + fat-tailed (Student-t) VaR/CVaR + stationary bootstrap.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (34 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (51 tests).
 
 ## Conventions
 
