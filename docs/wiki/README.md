@@ -20,8 +20,8 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 1 | Domain models, ports, adapters, first migration | 1–2 | ✅ done | [02-domain-ports-adapters.md](02-domain-ports-adapters.md) |
 | 3 | Data infrastructure: PIT universe, OHLCV, quality, corp-actions | 3–4 | ✅ done | [03-data-ingestion.md](03-data-ingestion.md) |
 | 5 | Math models (OU, Black-Scholes, Monte Carlo) | 4–6 | ✅ done | [04-math-models.md](04-math-models.md) |
-| — | Backtest engine + costs/impact | 7–8 | ⏳ next | — |
-| — | Momentum strategy + attribution/validation | 9–10 | ⬜ planned | — |
+| 7 | Backtest engine + cost/impact model | 7–8 | ✅ done | [05-backtest-engine.md](05-backtest-engine.md) |
+| — | Momentum strategy + attribution/validation | 9–10 | ⏳ next | — |
 | — | API read endpoints + job submission + SSE | 8 | ⬜ planned | — |
 | — | Dashboard (read-only) | 9 | ⬜ planned | — |
 | — | PaperBroker + pairs + risk + live readiness | 10–12 | ⬜ planned | — |
@@ -35,8 +35,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 - OHLCV download + parquet cache + liquidity (ADV); data-quality + corporate-action verifiers.
 - Math models: OU fit/half-life/z-score, Black-Scholes pricing/Greeks/IV (from scratch),
   Monte Carlo GBM/OU paths + fat-tailed (Student-t) VaR/CVaR + stationary bootstrap.
+- Backtest engine: no look-ahead, next-bar fills, Indian explicit costs + market-impact model
+  with ADV participation cap and circuit guards.
 - Postgres schema via Alembic (`0001_initial`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (51 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (64 tests).
 
 ## Conventions
 
