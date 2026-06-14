@@ -28,8 +28,9 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
 | 8 | API: read endpoints + job submission + SSE | 8 | ✅ done | [10-api-layer.md](10-api-layer.md) |
 | 14 | PaperBroker (Broker port, simulated) | 14 | ✅ done | [11-paper-broker.md](11-paper-broker.md) |
 | 15 | Gated order/approval path (2FA, kill switch, audit) | 15 | ✅ done | [12-order-approval-path.md](12-order-approval-path.md) |
+| 16 | SmartAPI broker adapter + live readiness (§8.7) | 16 | ✅ done | [13-smartapi-live-readiness.md](13-smartapi-live-readiness.md) |
 | — | Dashboard (read-only) — needs Node toolchain | 9 | ⏳ next | — |
-| — | Kite adapter + live readiness (§8.7) | 16+ | ⬜ planned | — |
+| — | Live broker factory + reconciliation loop | 17+ | ⬜ planned | — |
 
 ## Current capability snapshot
 
@@ -55,8 +56,10 @@ How to use → Tests & verification → Gotchas → Next**. Steps map to the bui
   buying-power check, positions/margin (Kite adapter slots into the same port later).
 - Gated order/approval path: propose→approve with trading gate + TOTP 2FA step-up, server-side
   kill switch, buying-power check, and append-only audit — all off by default.
+- SmartAPI (Angel One) broker adapter behind the Broker port (injected SDK, offline-tested) +
+  live-readiness checks: reconciliation, slippage monitor, paper-vs-sim P&L divergence.
 - Postgres schema via Alembic (`0001_initial`, `0002_orders`).
-- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (114 tests).
+- Quality bar held every step: `ruff`, `mypy`, `pytest`, `pip-audit` all green (126 tests).
 
 ## Conventions
 
