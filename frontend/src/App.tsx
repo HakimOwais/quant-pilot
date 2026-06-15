@@ -205,6 +205,11 @@ function Backtests() {
   const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS,INFY.NS");
   const [start, setStart] = useState("2022-01-01");
   const [end, setEnd] = useState("2024-06-30");
+  const [lookbacks, setLookbacks] = useState("6,12");
+  const [skipMonths, setSkipMonths] = useState("1");
+  const [longPct, setLongPct] = useState("0.2");
+  const [volWindow, setVolWindow] = useState("20");
+  const [turnoverBand, setTurnoverBand] = useState("0");
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -242,11 +247,21 @@ function Backtests() {
   const submit = async () => {
     setErr(null);
     try {
-      const params = {
+      const params: Record<string, unknown> = {
         symbols: symbols.split(",").map((s) => s.trim()).filter(Boolean),
         start,
         end,
       };
+      if (strategy === "momentum") {
+        params.lookbacks = lookbacks
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => !Number.isNaN(n));
+        params.skip_months = Number(skipMonths);
+        params.long_pct = Number(longPct);
+        params.vol_window = Number(volWindow);
+        params.turnover_band = Number(turnoverBand);
+      }
       const r = await api.submitBacktest(strategy, params);
       setSelectedId(r.run_id);
       toast(`Backtest queued · ${r.run_id.slice(0, 8)}`);
@@ -276,6 +291,15 @@ function Backtests() {
             Run
           </button>
         </div>
+        {strategy === "momentum" && (
+          <div className="params">
+            <Param label="lookbacks (mo)" value={lookbacks} onChange={setLookbacks} />
+            <Param label="skip (mo)" value={skipMonths} onChange={setSkipMonths} />
+            <Param label="long frac (0–1)" value={longPct} onChange={setLongPct} />
+            <Param label="vol window" value={volWindow} onChange={setVolWindow} />
+            <Param label="turnover band" value={turnoverBand} onChange={setTurnoverBand} />
+          </div>
+        )}
       </Card>
 
       <div className="split">
@@ -459,6 +483,23 @@ function Universe() {
         )}
       </Card>
     </>
+  );
+}
+
+function Param({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="param">
+      <span>{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
   );
 }
 

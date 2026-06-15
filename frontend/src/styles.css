@@ -159,6 +159,29 @@ input::placeholder {
   min-width: 140px;
 }
 
+.params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.param span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+.param input {
+  width: 110px;
+}
+
 /* ---------- cards ---------- */
 .cards {
   display: grid;

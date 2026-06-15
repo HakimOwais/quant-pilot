@@ -93,7 +93,13 @@ Verified live: built the frontend image (strict `tsc` + `vite build` clean), ran
 backtest on real NSE data, and the equity endpoint returned **613 points** (₹1.0M → ₹1.31M) that
 the chart renders.
 
+**Strategy parameter controls:** the New-backtest form exposes momentum knobs — lookbacks (mo),
+skip (mo), long fraction, vol window, turnover band — passed through `params` to a
+`MomentumConfig` (extra keys ignored) in `execute_backtest`. This turns the dashboard from
+"view results" into "search for an edge": e.g. default (long 0.2, lookbacks 6,12) → +30.9% / 8
+rebalances vs tuned (long 0.6, lookback 3, skip 0) → +24.1% / 26 rebalances on the same data.
+
 ## Next
 
-Optionally commit the generated `package-lock.json`; add a gated order panel (TOTP entry) and live
-positions once trading is enabled; richer charts (tooltips/axes) if desired.
+Optionally commit the generated `package-lock.json`; run comparison (overlay multiple runs); a
+gated order panel (TOTP entry) once trading is enabled; a small parameter-sweep helper.

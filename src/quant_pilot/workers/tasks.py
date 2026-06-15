@@ -25,7 +25,7 @@ from quant_pilot.engine.analysis.performance import drawdown_series, performance
 from quant_pilot.engine.analysis.validation import sharpe_significance
 from quant_pilot.engine.backtest.engine import BacktestEngine, PriceData
 from quant_pilot.engine.data.universe import build_membership_intervals, read_membership_csv
-from quant_pilot.engine.strategies.momentum import MomentumStrategy
+from quant_pilot.engine.strategies.momentum import MomentumConfig, MomentumStrategy
 from quant_pilot.log import get_logger
 
 log = get_logger("worker")
@@ -78,14 +78,17 @@ def execute_backtest(
     strategy: str = "momentum",
     rf: float = 0.065,
     benchmark_close: pd.Series | None = None,
+    strategy_params: dict | None = None,
 ) -> dict:
     """Run a strategy through the engine and compute performance + significance. Pure-ish: prices
     in, metrics out (testable with synthetic data, no IO). An optional benchmark close series is
-    overlaid as a buy-and-hold normalized to the same initial capital."""
+    overlaid as a buy-and-hold normalized to the same initial capital. `strategy_params` tunes the
+    strategy config (extra keys ignored)."""
     if prices.close is None or prices.close.empty:
         raise ValueError("no price data for the requested symbols/date range (ingest OHLCV first)")
     if strategy == "momentum":
-        weights = MomentumStrategy().generate_weights(prices.close)
+        cfg = MomentumConfig.model_validate(strategy_params or {})
+        weights = MomentumStrategy(cfg).generate_weights(prices.close)
     else:
         raise ValueError(f"unsupported strategy: {strategy!r}")
     result = BacktestEngine().run(prices, weights)
@@ -200,7 +203,10 @@ def run_backtest(run_id: str) -> dict:
             params.get("end", "2025-12-31"),
         )
         metrics = execute_backtest(
-            prices, strategy=params.get("strategy", "momentum"), benchmark_close=bench_close
+            prices,
+            strategy=params.get("strategy", "momentum"),
+            benchmark_close=bench_close,
+            strategy_params=params,
         )
         curve = metrics.pop("equity_curve", None)
         if curve:

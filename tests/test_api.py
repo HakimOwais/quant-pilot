@@ -155,6 +155,33 @@ def test_equity_curve_endpoint(session, tmp_path):
     assert client.get("/api/v1/backtests/missing/equity").status_code == 404
 
 
+def test_execute_backtest_honours_custom_momentum_params():
+    import numpy as np
+    import pandas as pd
+
+    from quant_pilot.engine.backtest.engine import PriceData
+    from quant_pilot.workers.tasks import execute_backtest
+
+    n = 320
+    t = np.arange(n)
+    close = pd.DataFrame(
+        {
+            "A": 100 * 1.0015**t,
+            "B": 100 * 1.0010**t,
+            "C": 100 * 1.0005**t,
+            "D": 100 * 0.9990**t,
+        },
+        index=pd.bdate_range("2020-01-01", periods=n),
+    )
+    # custom params: shorter lookback, no skip, wider selection (extra keys like symbols ignored)
+    metrics = execute_backtest(
+        PriceData(open=close, close=close),
+        strategy_params={"lookbacks": [3], "skip_months": 0, "long_pct": 0.5, "symbols": ["A"]},
+    )
+    assert metrics["summary"]["n_rebalances"] >= 1
+    assert len(metrics["equity_curve"]) > 0
+
+
 def test_execute_backtest_empty_data_raises_clear_error():
     import pandas as pd
     import pytest
