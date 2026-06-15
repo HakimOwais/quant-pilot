@@ -20,6 +20,7 @@ from quant_pilot.adapters.persistence.repository import SqlAlchemyRepository
 from quant_pilot.config.settings import get_settings
 from quant_pilot.db.base import get_sessionmaker
 from quant_pilot.domain.models import RunStatus
+from quant_pilot.engine.analysis.attribution import factor_attribution
 from quant_pilot.engine.analysis.performance import drawdown_series, performance_stats
 from quant_pilot.engine.analysis.validation import sharpe_significance
 from quant_pilot.engine.backtest.engine import BacktestEngine, PriceData
@@ -106,11 +107,38 @@ def execute_backtest(
             point["benchmark"] = float(bench_equity.iloc[i])
         equity_curve.append(point)
 
-    return {
+    metrics = {
         "summary": result.summary,
         "performance": perf.model_dump(),
         "significance": sig.model_dump(),
         "equity_curve": equity_curve,
+    }
+    attribution = _benchmark_attribution(result.returns, bench_equity, rf)
+    if attribution is not None:
+        metrics["attribution"] = attribution
+    return metrics
+
+
+def _benchmark_attribution(
+    returns: pd.Series, bench_equity: pd.Series | None, rf: float
+) -> dict | None:
+    """Single-factor (market = benchmark) attribution: alpha/beta/IR/R² vs the benchmark."""
+    if bench_equity is None:
+        return None
+    bench_ret = bench_equity.pct_change()
+    try:
+        attr = factor_attribution(returns, pd.DataFrame({"market": bench_ret}), rf=rf)
+    except Exception:
+        return None  # degenerate (singular/too-short) regression -> skip attribution gracefully
+    active = (returns - bench_ret).dropna()
+    ir = float(active.mean() / active.std(ddof=1) * (252**0.5)) if active.std(ddof=1) > 0 else 0.0
+    return {
+        "alpha_annual": attr.alpha_annual,
+        "alpha_tstat": attr.alpha_tstat,
+        "alpha_significant": attr.alpha_is_significant,
+        "beta": attr.betas.get("market", 0.0),
+        "r_squared": attr.r_squared,
+        "information_ratio": ir,
     }
 
 

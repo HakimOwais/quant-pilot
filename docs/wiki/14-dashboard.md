@@ -83,6 +83,12 @@ initial capital) so out/under-performance vs the benchmark is visible at a glanc
 run showed momentum **+30.9% vs NIFTY +36.2%** (the tilt underperformed beta — exactly the kind of
 thing the overlay surfaces). Ingest `^NSEI` for the run's date range to get the overlay.
 
+**Benchmark attribution panel:** when the benchmark is present, the backtest also runs a
+single-factor (market = NIFTY) regression and the tearsheet shows **alpha (annual) · beta · info
+ratio · R² · alpha t-stat** with an "alpha significant / not significant" tag (HAC t-stat). The
+verified run reported alpha −1.48% (t = −0.17, **not significant**), beta 0.54, R² 0.22 — i.e. no
+real alpha vs the index, the alpha-vs-beta verdict the MASTER_PROMPT demands, surfaced in the UI.
+
 Verified live: built the frontend image (strict `tsc` + `vite build` clean), ran a momentum
 backtest on real NSE data, and the equity endpoint returned **613 points** (₹1.0M → ₹1.31M) that
 the chart renders.

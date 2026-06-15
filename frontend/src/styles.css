@@ -357,6 +357,23 @@ input::placeholder {
   font-size: 12px;
   margin-bottom: 12px;
 }
+.tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+}
+.tag.pos {
+  background: rgba(61, 220, 140, 0.15);
+  color: var(--pos);
+}
+.tag.muted {
+  background: var(--panel-2);
+  color: var(--muted);
+}
 .empty {
   color: var(--muted);
   padding: 18px;

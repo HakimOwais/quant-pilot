@@ -119,12 +119,17 @@ def test_execute_backtest_benchmark_overlay():
     close = pd.DataFrame(
         {"WIN": 100 * 1.0015**t, "FLAT": np.full(n, 100.0), "LOSE": 100 * 0.9985**t}, index=idx
     )
-    bench = pd.Series(100 * 1.0005**t, index=idx)  # benchmark rises modestly
+    rng = np.random.default_rng(0)
+    bench = pd.Series(100 * np.cumprod(1 + rng.normal(0.0004, 0.008, n)), index=idx)  # noisy benchmark
     metrics = execute_backtest(PriceData(open=close, close=close), benchmark_close=bench)
     pts = metrics["equity_curve"]
     assert any("benchmark" in p for p in pts)
     last = pts[-1]
     assert last["benchmark"] > 0  # normalized buy-and-hold from initial capital
+
+    attr = metrics["attribution"]
+    assert {"alpha_annual", "beta", "information_ratio", "r_squared"} <= attr.keys()
+    assert isinstance(attr["alpha_significant"], bool)
 
 
 def test_equity_curve_endpoint(session, tmp_path):

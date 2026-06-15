@@ -187,6 +187,14 @@ interface Metrics {
     ci_low: number;
     ci_high: number;
   };
+  attribution?: {
+    alpha_annual: number;
+    alpha_tstat: number;
+    alpha_significant: boolean;
+    beta: number;
+    r_squared: number;
+    information_ratio: number;
+  };
 }
 
 function Backtests() {
@@ -366,6 +374,32 @@ function Backtests() {
                   value={`${fmt.num(m.significance.ci_low)} – ${fmt.num(m.significance.ci_high)}`}
                 />
               </div>
+
+              {m.attribution && (
+                <>
+                  <h4>
+                    Attribution vs NIFTY{" "}
+                    <span className={m.attribution.alpha_significant ? "tag pos" : "tag muted"}>
+                      {m.attribution.alpha_significant ? "alpha significant" : "alpha not significant"}
+                    </span>
+                  </h4>
+                  <div className="metrics-grid">
+                    <Metric
+                      label="Alpha (annual)"
+                      value={fmt.pct(m.attribution.alpha_annual)}
+                      tone={tone(m.attribution.alpha_annual)}
+                    />
+                    <Metric label="Beta" value={fmt.num(m.attribution.beta)} />
+                    <Metric
+                      label="Info Ratio"
+                      value={fmt.num(m.attribution.information_ratio)}
+                      tone={tone(m.attribution.information_ratio)}
+                    />
+                    <Metric label="R²" value={fmt.pct(m.attribution.r_squared)} />
+                    <Metric label="Alpha t-stat" value={fmt.num(m.attribution.alpha_tstat)} />
+                  </div>
+                </>
+              )}
             </>
           )}
         </Card>
