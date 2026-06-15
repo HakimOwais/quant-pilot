@@ -106,6 +106,27 @@ def test_execute_backtest_produces_metrics():
     assert {"date", "equity", "drawdown"} <= metrics["equity_curve"][0].keys()
 
 
+def test_execute_backtest_benchmark_overlay():
+    import numpy as np
+    import pandas as pd
+
+    from quant_pilot.engine.backtest.engine import PriceData
+    from quant_pilot.workers.tasks import execute_backtest
+
+    n = 300
+    idx = pd.bdate_range("2020-01-01", periods=n)
+    t = np.arange(n)
+    close = pd.DataFrame(
+        {"WIN": 100 * 1.0015**t, "FLAT": np.full(n, 100.0), "LOSE": 100 * 0.9985**t}, index=idx
+    )
+    bench = pd.Series(100 * 1.0005**t, index=idx)  # benchmark rises modestly
+    metrics = execute_backtest(PriceData(open=close, close=close), benchmark_close=bench)
+    pts = metrics["equity_curve"]
+    assert any("benchmark" in p for p in pts)
+    last = pts[-1]
+    assert last["benchmark"] > 0  # normalized buy-and-hold from initial capital
+
+
 def test_equity_curve_endpoint(session, tmp_path):
     from quant_pilot.adapters.artifacts.local_store import LocalArtifactStore
     from quant_pilot.api.deps import get_artifact_store

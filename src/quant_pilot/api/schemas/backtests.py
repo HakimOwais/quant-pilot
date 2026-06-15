@@ -24,3 +24,4 @@ class EquityPoint(BaseModel):
     date: str
     equity: float
     drawdown: float
+    benchmark: float | None = None  # benchmark buy-and-hold, same initial capital

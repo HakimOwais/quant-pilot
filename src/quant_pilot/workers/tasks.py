@@ -72,9 +72,15 @@ def ingest_ohlcv(symbols: list[str], start: str, end: str) -> dict:
     return {"ok": ok, "failed": failed}
 
 
-def execute_backtest(prices: PriceData, strategy: str = "momentum", rf: float = 0.065) -> dict:
+def execute_backtest(
+    prices: PriceData,
+    strategy: str = "momentum",
+    rf: float = 0.065,
+    benchmark_close: pd.Series | None = None,
+) -> dict:
     """Run a strategy through the engine and compute performance + significance. Pure-ish: prices
-    in, metrics out (testable with synthetic data, no IO)."""
+    in, metrics out (testable with synthetic data, no IO). An optional benchmark close series is
+    overlaid as a buy-and-hold normalized to the same initial capital."""
     if prices.close is None or prices.close.empty:
         raise ValueError("no price data for the requested symbols/date range (ingest OHLCV first)")
     if strategy == "momentum":
@@ -85,16 +91,40 @@ def execute_backtest(prices: PriceData, strategy: str = "momentum", rf: float = 
     perf = performance_stats(result.returns, rf=rf)
     sig = sharpe_significance(result.returns, n_resamples=200)
     dd = drawdown_series(result.returns)
-    equity_curve = [
-        {"date": pd.Timestamp(ts).date().isoformat(), "equity": float(eq), "drawdown": float(d)}
-        for ts, eq, d in zip(result.equity.index, result.equity.to_numpy(), dd.to_numpy())
-    ]
+
+    bench_equity = _benchmark_equity(
+        benchmark_close, result.equity.index, result.summary["initial_capital"]
+    )
+    equity_curve = []
+    for i, ts in enumerate(result.equity.index):
+        point = {
+            "date": pd.Timestamp(ts).date().isoformat(),
+            "equity": float(result.equity.iloc[i]),
+            "drawdown": float(dd.iloc[i]),
+        }
+        if bench_equity is not None and pd.notna(bench_equity.iloc[i]):
+            point["benchmark"] = float(bench_equity.iloc[i])
+        equity_curve.append(point)
+
     return {
         "summary": result.summary,
         "performance": perf.model_dump(),
         "significance": sig.model_dump(),
         "equity_curve": equity_curve,
     }
+
+
+def _benchmark_equity(
+    benchmark_close: pd.Series | None, index: pd.Index, initial_capital: float
+) -> pd.Series | None:
+    """Buy-and-hold of the benchmark, aligned to `index` and normalized to initial_capital."""
+    if benchmark_close is None or benchmark_close.empty:
+        return None
+    aligned = benchmark_close.reindex(index).ffill()
+    valid = aligned.dropna()
+    if valid.empty:
+        return None
+    return initial_capital * aligned / valid.iloc[0]
 
 
 def _prices_from_cache(symbols: list[str], start: str, end: str) -> PriceData:
@@ -109,6 +139,14 @@ def _prices_from_cache(symbols: list[str], start: str, end: str) -> PriceData:
         closes[sym] = window["close"]
         opens[sym] = window["open"]
     return PriceData(open=pd.DataFrame(opens), close=pd.DataFrame(closes))
+
+
+def _close_from_cache(symbol: str, start: str, end: str) -> pd.Series | None:
+    df = OHLCVCache(get_settings().data_dir).read(symbol)
+    if df is None or df.empty:
+        return None
+    window = df[(df.index >= pd.Timestamp(start)) & (df.index <= pd.Timestamp(end))]
+    return window["close"] if not window.empty else None
 
 
 def run_backtest(run_id: str) -> dict:
@@ -128,7 +166,14 @@ def run_backtest(run_id: str) -> dict:
             params.get("start", "2015-01-01"),
             params.get("end", "2025-12-31"),
         )
-        metrics = execute_backtest(prices, strategy=params.get("strategy", "momentum"))
+        bench_close = _close_from_cache(
+            params.get("benchmark", "^NSEI"),
+            params.get("start", "2015-01-01"),
+            params.get("end", "2025-12-31"),
+        )
+        metrics = execute_backtest(
+            prices, strategy=params.get("strategy", "momentum"), benchmark_close=bench_close
+        )
         curve = metrics.pop("equity_curve", None)
         if curve:
             LocalArtifactStore(get_settings().artifacts_dir).save_json(

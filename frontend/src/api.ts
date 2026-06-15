@@ -69,6 +69,7 @@ export interface EquityPoint {
   date: string;
   equity: number;
   drawdown: number;
+  benchmark?: number | null;
 }
 
 export const api = {

@@ -110,17 +110,23 @@ export interface ChartPoint {
 
 export function Chart({
   points,
+  overlay,
   height = 200,
   stroke = "#5b9cff",
+  overlayStroke = "#8b95a7",
   area = true,
   baseline,
+  legend,
   format = (v) => v.toFixed(2),
 }: {
   points: ChartPoint[];
+  overlay?: ChartPoint[];
   height?: number;
   stroke?: string;
+  overlayStroke?: string;
   area?: boolean;
   baseline?: number;
+  legend?: [string, string];
   format?: (v: number) => string;
 }) {
   const [hi, setHi] = useState<number | null>(null);
@@ -129,13 +135,15 @@ export function Chart({
   const w = 800;
   const h = height;
   const pad = 10;
-  const values = points.map((p) => p.value);
-  const lo = Math.min(...values, baseline ?? Infinity);
-  const top = Math.max(...values, baseline ?? -Infinity);
+  const allValues = [...points.map((p) => p.value), ...(overlay?.map((p) => p.value) ?? [])];
+  const lo = Math.min(...allValues, baseline ?? Infinity);
+  const top = Math.max(...allValues, baseline ?? -Infinity);
   const span = top - lo || 1;
   const x = (i: number) => (i / (points.length - 1)) * (w - 2 * pad) + pad;
   const y = (v: number) => h - pad - ((v - lo) / span) * (h - 2 * pad);
-  const line = points.map((p, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const path = (pts: ChartPoint[]) =>
+    pts.map((p, i) => `${i ? "L" : "M"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const line = path(points);
   const areaD = `${line} L ${x(points.length - 1).toFixed(1)} ${h - pad} L ${x(0).toFixed(1)} ${h - pad} Z`;
   const gid = `g-${stroke.replace("#", "")}`;
 
@@ -146,10 +154,21 @@ export function Chart({
   };
 
   const cur = hi != null ? points[hi] : null;
+  const curOverlay = hi != null && overlay && hi < overlay.length ? overlay[hi] : null;
   const tipLeft = hi != null ? (hi / (points.length - 1)) * 100 : 0;
 
   return (
     <div className="chart-wrap" style={{ height }}>
+      {legend && (
+        <div className="chart-legend">
+          <span>
+            <i style={{ background: stroke }} /> {legend[0]}
+          </span>
+          <span>
+            <i style={{ background: overlayStroke }} /> {legend[1]}
+          </span>
+        </div>
+      )}
       <svg
         className="chart"
         viewBox={`0 0 ${w} ${h}`}
@@ -168,6 +187,16 @@ export function Chart({
           <line x1={pad} x2={w - pad} y1={y(baseline)} y2={y(baseline)} className="chart-baseline" />
         )}
         {area && <path d={areaD} fill={`url(#${gid})`} />}
+        {overlay && overlay.length > 1 && (
+          <path
+            d={path(overlay)}
+            fill="none"
+            stroke={overlayStroke}
+            strokeWidth={1.5}
+            strokeDasharray="5 4"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
         <path d={line} fill="none" stroke={stroke} strokeWidth={2} vectorEffect="non-scaling-stroke" />
         {hi != null && (
           <line x1={x(hi)} x2={x(hi)} y1={pad} y2={h - pad} className="chart-cross" vectorEffect="non-scaling-stroke" />
@@ -184,6 +213,7 @@ export function Chart({
       {cur && (
         <div className="chart-tip" style={{ left: `${tipLeft}%` }}>
           <div className="tip-val">{format(cur.value)}</div>
+          {curOverlay && <div className="tip-val2">{format(curOverlay.value)}</div>}
           <div className="tip-lab">{cur.label}</div>
         </div>
       )}

@@ -75,6 +75,14 @@ The dashboard was redesigned for a real quant-tool feel and is now **built/run-v
 New supporting API: `GET /api/v1/backtests/{id}/equity` — the engine persists the equity/drawdown
 curve as an artifact (shared datalake volume) and the endpoint serves it.
 
+**Interactive charts + benchmark overlay (later iteration):** the SVG chart gained a hover
+crosshair + tooltip and y/x axis labels; the tearsheet added a statistical-significance panel
+(Deflated/Probabilistic Sharpe, p-value, 95% bootstrap CI) and toast notifications. The backtest
+now also overlays a **NIFTY (`^NSEI`) buy-and-hold** on the equity curve (normalized to the same
+initial capital) so out/under-performance vs the benchmark is visible at a glance — e.g. a verified
+run showed momentum **+30.9% vs NIFTY +36.2%** (the tilt underperformed beta — exactly the kind of
+thing the overlay surfaces). Ingest `^NSEI` for the run's date range to get the overlay.
+
 Verified live: built the frontend image (strict `tsc` + `vite build` clean), ran a momentum
 backtest on real NSE data, and the equity endpoint returned **613 points** (₹1.0M → ₹1.31M) that
 the chart renders.

@@ -337,6 +337,12 @@ function Backtests() {
                   <h4>Equity curve</h4>
                   <Chart
                     points={equity.map((e) => ({ label: e.date, value: e.equity }))}
+                    overlay={
+                      equity.every((e) => e.benchmark != null)
+                        ? equity.map((e) => ({ label: e.date, value: e.benchmark as number }))
+                        : undefined
+                    }
+                    legend={equity.every((e) => e.benchmark != null) ? ["Strategy", "NIFTY"] : undefined}
                     baseline={m.summary.initial_capital}
                     format={(v) => fmt.money(v)}
                   />
