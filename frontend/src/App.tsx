@@ -8,7 +8,7 @@ import {
   type Readiness,
   type UniverseMember,
 } from "./api";
-import { Badge, Card, Dot, Empty, fmt, LineChart, Metric, Spinner, tone } from "./ui";
+import { Badge, Card, Chart, Dot, Empty, fmt, Metric, Spinner, Toaster, toast, tone } from "./ui";
 
 type Tab = "overview" | "data" | "backtests" | "universe";
 const TABS: { id: Tab; label: string }[] = [
@@ -41,6 +41,7 @@ export function App() {
         {tab === "backtests" && <Backtests />}
         {tab === "universe" && <Universe />}
       </main>
+      <Toaster />
     </div>
   );
 }
@@ -100,7 +101,6 @@ function Data() {
   const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS,INFY.NS");
   const [start, setStart] = useState("2022-01-01");
   const [end, setEnd] = useState("2024-06-30");
-  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [viewSymbol, setViewSymbol] = useState("RELIANCE.NS");
   const [bars, setBars] = useState<Bar[]>([]);
@@ -110,10 +110,9 @@ function Data() {
 
   const ingest = async () => {
     setErr(null);
-    setMsg(null);
     try {
       const r = await api.ingestOhlcv(syms(), start, end);
-      setMsg(`ingestion queued · job ${r.job_id.slice(0, 8)}`);
+      toast(`Ingestion queued · job ${r.job_id.slice(0, 8)}`);
     } catch (e) {
       setErr(String(e));
     }
@@ -144,7 +143,6 @@ function Data() {
             Ingest
           </button>
         </div>
-        {msg && <p className="muted">{msg}</p>}
       </Card>
       <Card
         title="Price"
@@ -157,7 +155,10 @@ function Data() {
       >
         {bars.length > 1 ? (
           <>
-            <LineChart values={bars.map((b) => b.close)} />
+            <Chart
+              points={bars.map((b) => ({ label: b.date, value: b.close }))}
+              format={(v) => fmt.num(v)}
+            />
             <div className="muted">
               {bars.length} bars · last close {fmt.num(bars[bars.length - 1].close)}
             </div>
@@ -179,7 +180,13 @@ interface Metrics {
     initial_capital: number;
   };
   performance: { cagr: number; sharpe: number; sortino: number; calmar: number; max_drawdown: number };
-  significance: { deflated_sharpe: number; probabilistic_sharpe: number; p_value: number };
+  significance: {
+    deflated_sharpe: number;
+    probabilistic_sharpe: number;
+    p_value: number;
+    ci_low: number;
+    ci_high: number;
+  };
 }
 
 function Backtests() {
@@ -234,6 +241,7 @@ function Backtests() {
       };
       const r = await api.submitBacktest(strategy, params);
       setSelectedId(r.run_id);
+      toast(`Backtest queued · ${r.run_id.slice(0, 8)}`);
       setRuns(await api.listBacktests());
     } catch (e) {
       setErr(String(e));
@@ -241,6 +249,7 @@ function Backtests() {
   };
 
   const m = (detail?.metrics as unknown as Metrics | null) ?? null;
+  const cfg = (detail?.params ?? {}) as { symbols?: string[]; start?: string; end?: string };
 
   return (
     <>
@@ -293,8 +302,16 @@ function Backtests() {
           )}
         </Card>
 
-        <Card title={detail ? `Run ${detail.id.slice(0, 8)}` : "Detail"} actions={detail && <Badge status={detail.status} />}>
+        <Card
+          title={detail ? `Run ${detail.id.slice(0, 8)}` : "Detail"}
+          actions={detail && <Badge status={detail.status} />}
+        >
           {!detail && <Empty>select a run</Empty>}
+          {detail && (
+            <div className="muted run-config">
+              {(cfg.symbols ?? []).join(", ") || "—"} · {cfg.start ?? "?"} → {cfg.end ?? "?"}
+            </div>
+          )}
           {detail?.status === "failed" && <p className="error">{detail.error}</p>}
           {detail && !m && detail.status !== "failed" && (
             <Empty>
@@ -310,19 +327,39 @@ function Backtests() {
                 <Metric label="Sortino" value={fmt.num(m.performance.sortino)} />
                 <Metric label="Calmar" value={fmt.num(m.performance.calmar)} />
                 <Metric label="Max DD" value={fmt.pct(m.performance.max_drawdown)} tone="neg" />
-                <Metric label="Deflated Sharpe" value={fmt.num(m.significance.deflated_sharpe)} />
                 <Metric label="Final Equity" value={fmt.money(m.summary.final_equity)} />
                 <Metric label="Costs" value={fmt.money(m.summary.total_costs)} tone="neg" />
                 <Metric label="Rebalances" value={fmt.num(m.summary.n_rebalances, 0)} />
               </div>
+
               {equity.length > 1 && (
                 <>
                   <h4>Equity curve</h4>
-                  <LineChart values={equity.map((e) => e.equity)} baseline={m.summary.initial_capital} />
+                  <Chart
+                    points={equity.map((e) => ({ label: e.date, value: e.equity }))}
+                    baseline={m.summary.initial_capital}
+                    format={(v) => fmt.money(v)}
+                  />
                   <h4>Drawdown</h4>
-                  <LineChart values={equity.map((e) => e.drawdown)} stroke="#ff6b6b" baseline={0} />
+                  <Chart
+                    points={equity.map((e) => ({ label: e.date, value: e.drawdown }))}
+                    stroke="#ff6b6b"
+                    baseline={0}
+                    format={(v) => fmt.pct(v)}
+                  />
                 </>
               )}
+
+              <h4>Significance (is the Sharpe real?)</h4>
+              <div className="metrics-grid">
+                <Metric label="Deflated Sharpe" value={fmt.num(m.significance.deflated_sharpe)} />
+                <Metric label="Prob. Sharpe" value={fmt.num(m.significance.probabilistic_sharpe)} />
+                <Metric label="p-value" value={fmt.num(m.significance.p_value, 3)} />
+                <Metric
+                  label="95% Sharpe CI"
+                  value={`${fmt.num(m.significance.ci_low)} – ${fmt.num(m.significance.ci_high)}`}
+                />
+              </div>
             </>
           )}
         </Card>
