@@ -102,6 +102,116 @@ export function Toaster() {
   );
 }
 
+// ---------- multi-series comparison chart ----------
+export interface Series {
+  label: string;
+  color: string;
+  values: (number | null)[]; // aligned to `labels`; null = gap
+}
+
+export function MultiChart({
+  labels,
+  series,
+  height = 220,
+  baseline,
+  format = (v) => v.toFixed(2),
+}: {
+  labels: string[];
+  series: Series[];
+  height?: number;
+  baseline?: number;
+  format?: (v: number) => string;
+}) {
+  const [hi, setHi] = useState<number | null>(null);
+  if (labels.length < 2 || series.length === 0) return <Empty>select 2+ runs to compare</Empty>;
+
+  const w = 800;
+  const h = height;
+  const pad = 10;
+  const nums = series.flatMap((s) => s.values.filter((v): v is number => v != null));
+  const lo = Math.min(...nums, baseline ?? Infinity);
+  const top = Math.max(...nums, baseline ?? -Infinity);
+  const span = top - lo || 1;
+  const x = (i: number) => (i / (labels.length - 1)) * (w - 2 * pad) + pad;
+  const y = (v: number) => h - pad - ((v - lo) / span) * (h - 2 * pad);
+  const pathOf = (vals: (number | null)[]) => {
+    let d = "";
+    let pen = false;
+    vals.forEach((v, i) => {
+      if (v == null) {
+        pen = false;
+        return;
+      }
+      d += `${pen ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)} `;
+      pen = true;
+    });
+    return d;
+  };
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const frac = (e.clientX - r.left) / r.width;
+    setHi(Math.max(0, Math.min(labels.length - 1, Math.round(frac * (labels.length - 1)))));
+  };
+  const tipLeft = hi != null ? (hi / (labels.length - 1)) * 100 : 0;
+
+  return (
+    <div className="chart-wrap" style={{ height }}>
+      <div className="chart-legend">
+        {series.map((s) => (
+          <span key={s.label}>
+            <i style={{ background: s.color }} /> {s.label}
+          </span>
+        ))}
+      </div>
+      <svg
+        className="chart"
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        onMouseMove={onMove}
+        onMouseLeave={() => setHi(null)}
+        role="img"
+      >
+        {baseline != null && (
+          <line x1={pad} x2={w - pad} y1={y(baseline)} y2={y(baseline)} className="chart-baseline" />
+        )}
+        {series.map((s) => (
+          <path
+            key={s.label}
+            d={pathOf(s.values)}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={1.8}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+        {hi != null && (
+          <line x1={x(hi)} x2={x(hi)} y1={pad} y2={h - pad} className="chart-cross" vectorEffect="non-scaling-stroke" />
+        )}
+      </svg>
+      <div className="chart-yaxis">
+        <span>{format(top)}</span>
+        <span>{format(lo)}</span>
+      </div>
+      <div className="chart-xaxis">
+        <span>{labels[0]}</span>
+        <span>{labels[labels.length - 1]}</span>
+      </div>
+      {hi != null && (
+        <div className="chart-tip multi" style={{ left: `${tipLeft}%` }}>
+          <div className="tip-lab">{labels[hi]}</div>
+          {series.map((s) =>
+            s.values[hi] != null ? (
+              <div key={s.label} className="tip-row">
+                <i style={{ background: s.color }} /> {format(s.values[hi] as number)}
+              </div>
+            ) : null,
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- interactive line chart (hover crosshair + tooltip + axes) ----------
 export interface ChartPoint {
   label: string;

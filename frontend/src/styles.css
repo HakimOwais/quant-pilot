@@ -375,6 +375,22 @@ input::placeholder {
   margin-right: 4px;
   vertical-align: middle;
 }
+.chart-tip.multi {
+  text-align: left;
+}
+.tip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.tip-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
 .run-config {
   font-family: var(--mono);
   font-size: 12px;

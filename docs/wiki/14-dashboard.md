@@ -99,7 +99,12 @@ skip (mo), long fraction, vol window, turnover band — passed through `params` 
 "view results" into "search for an edge": e.g. default (long 0.2, lookbacks 6,12) → +30.9% / 8
 rebalances vs tuned (long 0.6, lookback 3, skip 0) → +24.1% / 26 rebalances on the same data.
 
+**Run comparison:** check 2+ succeeded runs in the Runs table to open a Compare panel — a
+`MultiChart` overlays each run's **normalized growth** (% from start, date-aligned over the union of
+dates, gaps handled) plus a side-by-side metrics table (return, CAGR, Sharpe, Max DD, alpha, beta).
+Pure frontend over the existing equity + metrics endpoints; the natural partner to tunable params.
+
 ## Next
 
-Optionally commit the generated `package-lock.json`; run comparison (overlay multiple runs); a
-gated order panel (TOTP entry) once trading is enabled; a small parameter-sweep helper.
+Optionally commit the generated `package-lock.json`; a parameter-sweep helper (Sharpe vs a knob);
+a gated order panel (TOTP entry) once trading is enabled.

@@ -8,7 +8,23 @@ import {
   type Readiness,
   type UniverseMember,
 } from "./api";
-import { Badge, Card, Chart, Dot, Empty, fmt, Metric, Spinner, Toaster, toast, tone } from "./ui";
+import {
+  Badge,
+  Card,
+  Chart,
+  Dot,
+  Empty,
+  fmt,
+  Metric,
+  MultiChart,
+  type Series,
+  Spinner,
+  Toaster,
+  toast,
+  tone,
+} from "./ui";
+
+const PALETTE = ["#5b9cff", "#3ddc8c", "#f5b454", "#c98bff", "#ff6b6b", "#4dd0e1"];
 
 type Tab = "overview" | "data" | "backtests" | "universe";
 const TABS: { id: Tab; label: string }[] = [
@@ -210,7 +226,12 @@ function Backtests() {
   const [longPct, setLongPct] = useState("0.2");
   const [volWindow, setVolWindow] = useState("20");
   const [turnoverBand, setTurnoverBand] = useState("0");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [equityCache, setEquityCache] = useState<Record<string, EquityPoint[]>>({});
   const [err, setErr] = useState<string | null>(null);
+
+  const toggleCompare = (id: string) =>
+    setCompareIds((xs) => (xs.includes(id) ? xs.filter((i) => i !== id) : [...xs, id]));
 
   useEffect(() => {
     let alive = true;
@@ -271,8 +292,39 @@ function Backtests() {
     }
   };
 
+  // fetch equity curves for compared runs (cache by id)
+  useEffect(() => {
+    let alive = true;
+    for (const id of compareIds) {
+      if (equityCache[id]) continue;
+      const run = runs.find((r) => r.id === id);
+      if (run?.status !== "succeeded") continue;
+      api.getEquity(id).then((e) => alive && setEquityCache((c) => ({ ...c, [id]: e }))).catch(() => undefined);
+    }
+    return () => {
+      alive = false;
+    };
+  }, [compareIds, runs, equityCache]);
+
   const m = (detail?.metrics as unknown as Metrics | null) ?? null;
   const cfg = (detail?.params ?? {}) as { symbols?: string[]; start?: string; end?: string };
+
+  // build comparison series (normalized growth) over the union of dates
+  const curves = compareIds
+    .map((id) => ({ id, pts: equityCache[id] }))
+    .filter((c): c is { id: string; pts: EquityPoint[] } => !!c.pts && c.pts.length > 1);
+  const dateSet = new Set<string>();
+  curves.forEach((c) => c.pts.forEach((p) => dateSet.add(p.date)));
+  const cmpLabels = [...dateSet].sort();
+  const cmpIndex = new Map(cmpLabels.map((d, i) => [d, i]));
+  const cmpSeries: Series[] = curves.map((c, k) => {
+    const base = c.pts[0].equity;
+    const values: (number | null)[] = Array(cmpLabels.length).fill(null);
+    c.pts.forEach((p) => {
+      values[cmpIndex.get(p.date) as number] = p.equity / base;
+    });
+    return { label: c.id.slice(0, 8), color: PALETTE[k % PALETTE.length], values };
+  });
 
   return (
     <>
@@ -302,6 +354,56 @@ function Backtests() {
         )}
       </Card>
 
+      {compareIds.length >= 2 && (
+        <Card
+          title={`Compare (${curves.length})`}
+          actions={<button onClick={() => setCompareIds([])}>Clear</button>}
+        >
+          {curves.length < 2 ? (
+            <Empty>select 2+ succeeded runs (checkboxes) to compare</Empty>
+          ) : (
+            <>
+              <MultiChart
+                labels={cmpLabels}
+                series={cmpSeries}
+                baseline={1}
+                format={(v) => `${((v - 1) * 100).toFixed(1)}%`}
+              />
+              <table>
+                <thead>
+                  <tr>
+                    <th>run</th>
+                    <th>return</th>
+                    <th>CAGR</th>
+                    <th>Sharpe</th>
+                    <th>Max DD</th>
+                    <th>alpha</th>
+                    <th>beta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {curves.map((c) => {
+                    const run = runs.find((r) => r.id === c.id);
+                    const rm = (run?.metrics as unknown as Metrics | null) ?? null;
+                    return (
+                      <tr key={c.id}>
+                        <td className="mono">{c.id.slice(0, 8)}</td>
+                        <td>{rm ? fmt.pct(rm.summary.total_return) : "—"}</td>
+                        <td>{rm ? fmt.pct(rm.performance.cagr) : "—"}</td>
+                        <td>{rm ? fmt.num(rm.performance.sharpe) : "—"}</td>
+                        <td>{rm ? fmt.pct(rm.performance.max_drawdown) : "—"}</td>
+                        <td>{rm?.attribution ? fmt.pct(rm.attribution.alpha_annual) : "—"}</td>
+                        <td>{rm?.attribution ? fmt.num(rm.attribution.beta) : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
+        </Card>
+      )}
+
       <div className="split">
         <Card title="Runs">
           {runs.length === 0 ? (
@@ -310,6 +412,7 @@ function Backtests() {
             <table>
               <thead>
                 <tr>
+                  <th />
                   <th>id</th>
                   <th>status</th>
                   <th>requested</th>
@@ -322,6 +425,15 @@ function Backtests() {
                     className={`clickable ${r.id === selectedId ? "sel" : ""}`}
                     onClick={() => setSelectedId(r.id)}
                   >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={compareIds.includes(r.id)}
+                        disabled={r.status !== "succeeded"}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleCompare(r.id)}
+                      />
+                    </td>
                     <td className="mono">{r.id.slice(0, 8)}</td>
                     <td>
                       <Badge status={r.status} />
