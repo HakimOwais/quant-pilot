@@ -72,6 +72,27 @@ export interface EquityPoint {
   benchmark?: number | null;
 }
 
+export interface SweepPoint {
+  value: number;
+  total_return: number;
+  cagr: number;
+  sharpe: number;
+  max_drawdown: number;
+  n_rebalances: number;
+  alpha?: number | null;
+  beta?: number | null;
+  information_ratio?: number | null;
+}
+
+export interface SweepRequest {
+  symbols: string[];
+  start: string;
+  end: string;
+  param: string;
+  values: number[];
+  benchmark?: string;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   readiness: () => get<Readiness>("/api/v1/system/health"),
@@ -86,4 +107,5 @@ export const api = {
   getBars: (symbol: string, start: string, end: string) =>
     get<Bar[]>(`/api/v1/data/ohlcv/${symbol}?start=${start}&end=${end}`),
   getEquity: (runId: string) => get<EquityPoint[]>(`/api/v1/backtests/${runId}/equity`),
+  sweep: (req: SweepRequest) => post<SweepPoint[]>("/api/v1/sweep", req),
 };

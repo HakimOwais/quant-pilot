@@ -6,6 +6,7 @@ import {
   type BacktestRun,
   type EquityPoint,
   type Readiness,
+  type SweepPoint,
   type UniverseMember,
 } from "./api";
 import {
@@ -26,11 +27,12 @@ import {
 
 const PALETTE = ["#5b9cff", "#3ddc8c", "#f5b454", "#c98bff", "#ff6b6b", "#4dd0e1"];
 
-type Tab = "overview" | "data" | "backtests" | "universe";
+type Tab = "overview" | "data" | "backtests" | "sweep" | "universe";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "data", label: "Data" },
   { id: "backtests", label: "Backtests" },
+  { id: "sweep", label: "Sweep" },
   { id: "universe", label: "Universe" },
 ];
 
@@ -55,6 +57,7 @@ export function App() {
         {tab === "overview" && <Overview />}
         {tab === "data" && <Data />}
         {tab === "backtests" && <Backtests />}
+        {tab === "sweep" && <Sweep />}
         {tab === "universe" && <Universe />}
       </main>
       <Toaster />
@@ -540,6 +543,121 @@ function Backtests() {
           )}
         </Card>
       </div>
+    </>
+  );
+}
+
+const SWEEP_PARAMS = ["long_pct", "vol_window", "skip_months", "turnover_band"];
+
+function Sweep() {
+  const [symbols, setSymbols] = useState("RELIANCE.NS,TCS.NS,INFY.NS,HDFCBANK.NS,ICICIBANK.NS");
+  const [start, setStart] = useState("2022-01-01");
+  const [end, setEnd] = useState("2024-06-30");
+  const [param, setParam] = useState("long_pct");
+  const [values, setValues] = useState("0.1,0.2,0.3,0.4,0.5,0.6");
+  const [pts, setPts] = useState<SweepPoint[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = async () => {
+    setErr(null);
+    setBusy(true);
+    try {
+      const vals = values.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
+      setPts(
+        await api.sweep({
+          symbols: symbols.split(",").map((s) => s.trim()).filter(Boolean),
+          start,
+          end,
+          param,
+          values: vals,
+        }),
+      );
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hasAlpha = pts.some((p) => p.alpha != null);
+  const best = pts.reduce<SweepPoint | null>((b, p) => (b == null || p.sharpe > b.sharpe ? p : b), null);
+
+  return (
+    <>
+      <PageHead title="Parameter sweep" />
+      {err && <p className="error">{err}</p>}
+      <Card title="Sweep a momentum parameter">
+        <div className="form">
+          <input value={symbols} onChange={(e) => setSymbols(e.target.value)} placeholder="symbols" />
+          <input value={start} onChange={(e) => setStart(e.target.value)} />
+          <input value={end} onChange={(e) => setEnd(e.target.value)} />
+          <select value={param} onChange={(e) => setParam(e.target.value)}>
+            {SWEEP_PARAMS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          <input value={values} onChange={(e) => setValues(e.target.value)} placeholder="comma values" />
+          <button className="primary" onClick={() => void run()}>
+            {busy ? <Spinner /> : "Sweep"}
+          </button>
+        </div>
+        {best && (
+          <div className="muted" style={{ marginTop: 10 }}>
+            best Sharpe {fmt.num(best.sharpe)} at {param} = {best.value}
+          </div>
+        )}
+      </Card>
+
+      {pts.length > 0 && (
+        <>
+          <Card title={`Sharpe vs ${param}`}>
+            <Chart
+              points={pts.map((p) => ({ label: String(p.value), value: p.sharpe }))}
+              baseline={0}
+              format={(v) => fmt.num(v)}
+            />
+          </Card>
+          {hasAlpha && (
+            <Card title={`Alpha (annual) vs ${param}`}>
+              <Chart
+                points={pts.map((p) => ({ label: String(p.value), value: p.alpha as number }))}
+                stroke="#3ddc8c"
+                baseline={0}
+                format={(v) => fmt.pct(v)}
+              />
+            </Card>
+          )}
+          <Card title="Results">
+            <table>
+              <thead>
+                <tr>
+                  <th>{param}</th>
+                  <th>return</th>
+                  <th>Sharpe</th>
+                  <th>Max DD</th>
+                  <th>alpha</th>
+                  <th>rebal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pts.map((p) => (
+                  <tr key={p.value}>
+                    <td className="mono">{p.value}</td>
+                    <td>{fmt.pct(p.total_return)}</td>
+                    <td>{fmt.num(p.sharpe)}</td>
+                    <td>{fmt.pct(p.max_drawdown)}</td>
+                    <td>{p.alpha != null ? fmt.pct(p.alpha) : "—"}</td>
+                    <td className="muted">{fmt.num(p.n_rebalances, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>
+      )}
     </>
   );
 }

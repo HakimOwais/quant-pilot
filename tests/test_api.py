@@ -120,7 +120,9 @@ def test_execute_backtest_benchmark_overlay():
         {"WIN": 100 * 1.0015**t, "FLAT": np.full(n, 100.0), "LOSE": 100 * 0.9985**t}, index=idx
     )
     rng = np.random.default_rng(0)
-    bench = pd.Series(100 * np.cumprod(1 + rng.normal(0.0004, 0.008, n)), index=idx)  # noisy benchmark
+    bench = pd.Series(
+        100 * np.cumprod(1 + rng.normal(0.0004, 0.008, n)), index=idx
+    )  # noisy benchmark
     metrics = execute_backtest(PriceData(open=close, close=close), benchmark_close=bench)
     pts = metrics["equity_curve"]
     assert any("benchmark" in p for p in pts)

@@ -122,6 +122,56 @@ def execute_backtest(
     return metrics
 
 
+def sweep_parameter(
+    prices: PriceData,
+    param: str,
+    values: list[float],
+    base: dict | None = None,
+    strategy: str = "momentum",
+    rf: float = 0.065,
+    benchmark_close: pd.Series | None = None,
+) -> list[dict]:
+    """Run the strategy across a grid of one parameter; return a metric point per value.
+
+    Each point: value + total_return/cagr/sharpe/max_drawdown/n_rebalances (+ alpha/beta/IR if a
+    benchmark is supplied). Degenerate values are skipped. momentum only for now."""
+    if prices.close is None or prices.close.empty:
+        raise ValueError("no price data for the requested symbols/date range (ingest OHLCV first)")
+    if strategy != "momentum":
+        raise ValueError(f"sweep supports only momentum, got {strategy!r}")
+
+    points: list[dict] = []
+    for v in values:
+        try:
+            cfg = MomentumConfig.model_validate({**(base or {}), param: v})
+            weights = MomentumStrategy(cfg).generate_weights(prices.close)
+            result = BacktestEngine().run(prices, weights)
+            perf = performance_stats(result.returns, rf=rf)
+            point = {
+                "value": float(v),
+                "total_return": result.summary["total_return"],
+                "cagr": perf.cagr,
+                "sharpe": perf.sharpe,
+                "max_drawdown": perf.max_drawdown,
+                "n_rebalances": result.summary["n_rebalances"],
+            }
+            attr = _benchmark_attribution(
+                result.returns,
+                _benchmark_equity(
+                    benchmark_close, result.equity.index, result.summary["initial_capital"]
+                ),
+                rf,
+            )
+            if attr:
+                point["alpha"] = attr["alpha_annual"]
+                point["beta"] = attr["beta"]
+                point["information_ratio"] = attr["information_ratio"]
+            points.append(point)
+        except Exception:
+            continue  # skip a degenerate parameter value rather than fail the whole sweep
+    return points
+
+
 def _benchmark_attribution(
     returns: pd.Series, bench_equity: pd.Series | None, rf: float
 ) -> dict | None:

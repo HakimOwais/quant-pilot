@@ -19,6 +19,7 @@ from quant_pilot.api.routers import (
     jobs,
     orders,
     portfolio,
+    sweep,
     system,
     universe,
 )
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(orders.router, prefix=API_V1)
     app.include_router(portfolio.router, prefix=API_V1)
     app.include_router(data.router, prefix=API_V1)
+    app.include_router(sweep.router, prefix=API_V1)
     return app
 
 

@@ -104,7 +104,15 @@ rebalances vs tuned (long 0.6, lookback 3, skip 0) → +24.1% / 26 rebalances on
 dates, gaps handled) plus a side-by-side metrics table (return, CAGR, Sharpe, Max DD, alpha, beta).
 Pure frontend over the existing equity + metrics endpoints; the natural partner to tunable params.
 
+**Parameter sweep:** a Sweep tab + `POST /api/v1/sweep` runs a momentum knob
+(long_pct/vol_window/skip_months/turnover_band) across a grid of values and returns a metric per
+value (return/CAGR/Sharpe/MaxDD + alpha/beta/IR); the tab charts **Sharpe vs param** and **Alpha vs
+param** with a results table and a "best Sharpe at …" hint. Synchronous (reads the cache, no
+network), param allowlisted. Verified live: sweeping `long_pct` over 5 NIFTY names kept alpha
+**negative across the whole grid** — there's no edge here, which the sweep surfaces rather than
+letting you cherry-pick.
+
 ## Next
 
-Optionally commit the generated `package-lock.json`; a parameter-sweep helper (Sharpe vs a knob);
-a gated order panel (TOTP entry) once trading is enabled.
+Optionally commit the generated `package-lock.json`; pairs params + a pairs equity path; a gated
+order panel (TOTP entry) once trading is enabled; 2-D sweeps / sweep persistence.
